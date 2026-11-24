@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>商品清單加密工具</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+body{margin:0;background:#f5f4f0;color:#1d1d1b;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;font-size:15px;line-height:1.5}
+.box{max-width:520px;margin:30px auto;background:#fff;border:1px solid #e3e1da;border-radius:14px;padding:22px}
+h1{font-size:19px;margin:0 0 6px}
+label{display:block;margin-top:14px;font-weight:600;font-size:14px}
+input,select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #d8d6ce;border-radius:9px;font:inherit;margin-top:4px}
+button{margin-top:18px;width:100%;padding:12px;border:0;border-radius:10px;background:#c2410c;color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5}
+.hint{font-size:12.5px;color:#6b6a65}
+.msg{margin-top:12px;font-size:14px}
+.ok{color:#15803d}.err{color:#b91c1c}
+ol{padding-left:20px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>商品清單加密工具</h1>
+  <div class="hint">把新的商品清單 Excel 加密成 <b>data.enc.json</b>，再上傳到 GitHub 取代舊檔即可。檔案只在你的瀏覽器裡處理，不會上傳到任何地方。</div>
+  <label>1. 商品清單（.xlsx / .xls / .csv）<input type="file" id="f" accept=".xlsx,.xls,.csv"></label>
+  <label>工作表<select id="sheet" disabled></select></label>
+  <label>2. 幣別<select id="cur"><option>SGD</option><option>RM</option><option>NT$</option><option>HK$</option><option>$</option></select></label>
+  <label>3. 活動密碼<input type="password" id="pw1" autocomplete="new-password" placeholder="至少 8 個字元"></label>
+  <label>再輸入一次<input type="password" id="pw2" autocomplete="new-password"></label>
+  <button id="go" disabled>產生 data.enc.json</button>
+  <div class="msg" id="msg"></div>
+  <ol class="hint" style="margin-top:16px">
+    <li>下載的 data.enc.json 上傳到 GitHub repo，覆蓋舊檔（Add file → Upload files）。</li>
+    <li>約 1 分鐘後網站更新。換了密碼的話，所有同仁下次開啟時要輸入新密碼。</li>
+    <li>請確認 repo 裡沒有未加密的 data.json 或原始 Excel。</li>
+  </ol>
+</div>
+<script>
+const $=id=>document.getElementById(id);let wb=null,fname='';
+const b64=u=>{let s='';const a=new Uint8Array(u);for(let i=0;i<a.length;i+=8192)s+=String.fromCharCode(...a.subarray(i,i+8192));return btoa(s)};
+function check(){$('go').disabled=!(wb&&$('pw1').value.length>=8&&$('pw1').value===$('pw2').value)}
+['pw1','pw2'].forEach(i=>$(i).oninput=check);
+$('f').onchange=e=>{const f=e.target.files[0];if(!f)return;fname=f.name;const r=new FileReader();
+  r.onload=ev=>{try{
+    if(/\.csv$/i.test(f.name)){wb=XLSX.read(new TextDecoder('utf-8').decode(ev.target.result),{type:'string',raw:true})}
+    else wb=XLSX.read(ev.target.result,{type:'array'});
+    $('sheet').innerHTML=wb.SheetNames.map(n=>`<option>${n.replace(/</g,'&lt;')}</option>`).join('');$('sheet').disabled=wb.SheetNames.length<2;
+    $('msg').className='msg';$('msg').textContent=`已讀取：${f.name}`;check();
+  }catch(err){$('msg').className='msg err';$('msg').textContent='無法讀取檔案：'+err.message}};
+  r.readAsArrayBuffer(f)};
+$('go').onclick=async()=>{
+  $('go').disabled=true;$('msg').className='msg';$('msg').textContent='加密中…';
+  try{
+    const name=$('sheet').value||wb.SheetNames[0];
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:''})
+      .map(r=>r.map(v=>v instanceof Date?v.toISOString().slice(0,10):v));
+    const plain=new TextEncoder().encode(JSON.stringify({file:fname,sheet:name,currency:$('cur').value,rows}));
+    const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=250000;
+    const base=await crypto.subtle.importKey('raw',new TextEncoder().encode($('pw1').value),'PBKDF2',false,['deriveKey']);
+    const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt']);
+    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,plain);
+    const out=JSON.stringify({v:1,kdf:'PBKDF2-SHA256',iter,salt:b64(salt),iv:b64(iv),ct:b64(ct)});
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'application/json'}));a.download='data.enc.json';a.click();
+    $('msg').className='msg ok';$('msg').textContent=`完成：${rows.length-1} 列資料已加密並下載 data.enc.json`;
+  }catch(err){$('msg').className='msg err';$('msg').textContent='加密失敗：'+err.message}
+  check();
+};
+</script>
+</body>
+</html>
