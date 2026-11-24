@@ -218,7 +218,7 @@ const T={
 zh:{title:'展覽現場商品查詢',search:'搜尋',ph:'條碼末6碼 / 品號 / 中英文關鍵字（芙莉蓮&立牌）',inStock:'有庫存',
   allCounters:'全部櫃號',box:'櫃',perPage:n=>n?`${n} 筆/頁`:'全部顯示',
   sort:{default:'預設排序',stockDesc:'庫存 多→少',stockAsc:'庫存 少→多',priceDesc:'售價 高→低',priceAsc:'售價 低→高',sale:'特價優先',nameZh:'中文品名',nameEn:'英文品名'},
-  found:n=>`${n} 筆`,items:'品項數',boxItems:c=>`櫃 ${c} 品項`,stock:'期初庫存',amount:'庫存金額',zero:'庫存為 0',
+  found:n=>`${n} 筆`,items:'品項數',boxItems:c=>`${c} 品項`,stock:'期初庫存',amount:'庫存金額',zero:'庫存為 0',
   price:'售價',salePrice:'特價',opening:'期初',free:'贈品',noZh:'（無中文品名）',noCode:'無品號',noEn:'（無英文品名）',
   bcMode:d=>`條碼 / 品號查詢：含「${d}」`,kwMode:'關鍵字：',and:' 且 ',or:'　或　',
   none:'查無商品',noneHint:'試試較短的條碼末碼、換個關鍵字，或取消篩選。',prev:'上一頁',next:'下一頁',
@@ -278,7 +278,8 @@ en:`<ul>
 const SERIES_EN={'86-不存在的戰區':'86 EIGHTY-SIX','Hunter':'Hunter x Hunter','JOJO的奇妙冒險':"JoJo's Bizarre Adventure",'T-shirt區':'T-shirts',
  '刀劍神域':'Sword Art Online','家庭教師':'Reborn!','從零開始的異世界生活':'Re:ZERO','戀上換裝娃娃':'My Dress-Up Darling','暗殺教室':'Assassination Classroom',
  '無職轉生':'Mushoku Tensei','膽大黨':'Dandadan','葬送的芙莉蓮':'Frieren','轉生史萊姆':'Reincarnated as a Slime','進擊的巨人':'Attack on Titan',
- '鋼之鍊金術師 BROTHERHOOD':'Fullmetal Alchemist: Brotherhood','間諜家家酒':'Spy x Family','防風少年':'Wind Breaker','鬼滅之刃':'Demon Slayer'};
+ '鋼之鍊金術師 BROTHERHOOD':'Fullmetal Alchemist: Brotherhood','間諜家家酒':'Spy x Family','防風少年':'Wind Breaker','鬼滅之刃':'Demon Slayer',
+ 'HUNTER':'Hunter x Hunter','JOJO':'JoJo','從零':'Re:ZERO','鋼之鍊金術師':'Fullmetal Alchemist','福袋':'Lucky Bag','滿額贈':'GWP','收銀':'Cashier'};
 const TAGS={sale:{zh:'特價',en:'Sale'},bag:{zh:'福袋',en:'Lucky Bag'},gwp:{zh:'滿額贈',en:'GWP'}};
 const SOURCES={kl:{zh:'吉隆坡倉備貨',en:'KL warehouse'},tw:{zh:'台灣備貨（已裝箱）',en:'Packed in Taiwan'},sh:{zh:'上海新貨',en:'Shanghai new stock'}};
 
@@ -290,10 +291,11 @@ const FIELDS=[
   {key:'nameZh',zh:'中文品名',en:'Chinese name',alias:['中文品名','品名','商品名稱','商品名','名稱']},
   {key:'counter',zh:'櫃號',en:'Box no.',req:true,alias:['櫃號','box label','box lable','櫃位編號','counter','櫃位']},
   {key:'series',zh:'作品',en:'Series',alias:['作品','作品名','系列','ip','櫃位']},
+  {key:'zone',zh:'櫃位/區域',en:'Zone',alias:['櫃位','區域','zone','area']},
   {key:'price',zh:'售價',en:'Price',req:true,alias:['售價','售价','定價','單價','rsp','price','價格']},
-  {key:'stock',zh:'期初庫存',en:'Opening stock',req:true,alias:['期初庫存','期初','order qty','庫存','數量','qty','stock']},
-  {key:'special',zh:'特價',en:'Sale price',alias:['特價','特价','優惠價','sale price','promo price']},
-  {key:'status',zh:'狀態',en:'Status',alias:['status','狀態','備註','note']},
+  {key:'stock',zh:'期初庫存',en:'Opening stock',req:true,alias:['期初庫存','期初','order qty','總計','總數','庫存','數量','qty','stock']},
+  {key:'special',zh:'特價',en:'Sale price',alias:['最後現場售價','現場售價','特價','特价','優惠價','final price','sale price','promo price']},
+  {key:'status',zh:'狀態',en:'Status',alias:['status','活動','狀態','備註','note']},
   {key:'gwp',zh:'滿額贈門檻',en:'GWP threshold',alias:['gwp','滿額贈']},
   {key:'bag',zh:'福袋數量',en:'Lucky-bag count',alias:['package paper','paper bag','福袋數','福袋']},
   {key:'image',zh:'圖片連結',en:'Photo link',alias:['圖片連結','圖片','image','photo','img']}
@@ -308,8 +310,11 @@ const L=()=>T[pref.lang];
 /* thumbnails: hidden automatically where the host blocks outside images */
 const IMG={ok:0,fail:0,blocked:false};
 window.__imgOk=function(el){IMG.ok++};
-window.__imgErr=function(el){IMG.fail++;const c=el.closest('.item');if(c&&el.classList.contains('thumb'))c.classList.add('nt');el.remove();if(!IMG.ok&&IMG.fail>=3)IMG.blocked=true};
-const imgTag=(it,cls)=>it.image&&!IMG.blocked?`<img class="${cls}" src="${esc(it.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onload="__imgOk(this)" onerror="__imgErr(this)">`:'';
+window.__imgErr=function(el){const alt=(el.dataset.alt||'').split('|').filter(Boolean);if(alt.length){el.dataset.alt=alt.slice(1).join('|');el.src=alt[0];return}
+  IMG.fail++;const c=el.closest('.item');if(c&&el.classList.contains('thumb'))c.classList.add('nt');el.remove();if(!IMG.ok&&IMG.fail>=8)IMG.blocked=true};
+function imgList(it){if(it.image)return[it.image];if(!/^\d{8,14}$/.test(it.barcode))return[];const b=it.barcode,h='https://products.e-muse.com/';
+  return[`${h}small/${b}.jpg`,`${h}ODM/small/${b}.jpg`,`${h}outsourcing/${b}.jpg`]}
+const imgTag=(it,cls)=>{const u=imgList(it);return u.length&&!IMG.blocked?`<img class="${cls}" src="${esc(u[0])}" data-alt="${esc(u.slice(1).join('|'))}" alt="" loading="lazy" referrerpolicy="no-referrer" onload="__imgOk(this)" onerror="__imgErr(this)">`:''};
 
 function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
@@ -384,19 +389,28 @@ function guessMap(headers){
   });
   return map;
 }
+/* if barcode / item-code headers are swapped in the sheet, swap them back by looking at the data */
+function fixMap(rows,headerRow,map){
+  if(map.barcode===undefined||map.code===undefined)return map;
+  const isBc=v=>/^\d{8,14}$/.test(cellStr(v));let a=0,b=0,n=0;
+  for(let r=headerRow+1;r<rows.length&&n<50;r++){const row=rows[r]||[];if(!row.length)continue;n++;
+    if(isBc(row[map.barcode]))a++;if(isBc(row[map.code]))b++}
+  if(b>a){const t=map.barcode;map.barcode=map.code;map.code=t}
+  return map;
+}
 function buildItems(rows,headerRow,map,limit){
   const get=(row,k)=>map[k]===undefined?'':row[map[k]];
   const out=[],byKey=new Map();
   for(let r=headerRow+1;r<rows.length;r++){
     const row=rows[r]||[];
     const raw={barcode:cellStr(get(row,'barcode')).replace(/\s/g,''),code:cellStr(get(row,'code')),
-      nameEn:cellStr(get(row,'nameEn')),nameZh:cellStr(get(row,'nameZh')),counter:cellStr(get(row,'counter')),series:cellStr(get(row,'series')),
+      nameEn:cellStr(get(row,'nameEn')),nameZh:cellStr(get(row,'nameZh')),counter:cellStr(get(row,'counter')),series:cellStr(get(row,'series')),zone:cellStr(get(row,'zone')),
       price:toNum(get(row,'price')),stock:toNum(get(row,'stock')),special:toNum(get(row,'special')),status:cellStr(get(row,'status')),
       gwp:toNum(get(row,'gwp')),bag:toNum(get(row,'bag')),image:cellStr(get(row,'image'))};
     if(!raw.barcode&&!raw.nameZh&&!raw.nameEn)continue;
     if(raw.image&&!/^https?:\/\//i.test(raw.image))raw.image='';
     const st=parseStatus(raw.status);
-    if(raw.special!==null&&raw.special>0&&raw.price)st.tags.add('sale');else raw.special=null;
+    if(raw.special!==null&&raw.special>0&&raw.price&&raw.special<raw.price)st.tags.add('sale');else raw.special=null;
     if(raw.gwp)st.tags.add('gwp');
     const key=raw.barcode?raw.barcode+'|'+raw.counter:'row'+r;
     let it=byKey.get(key);
@@ -406,7 +420,7 @@ function buildItems(rows,headerRow,map,limit){
       byKey.set(key,it);out.push(it);
     }else{ // duplicate barcode in same box (e.g. two shipments) -> merge
       it.stock=(it.stock||0)+(raw.stock||0);
-      ['code','nameEn','nameZh','series','image'].forEach(k=>{if(!it[k]&&raw[k])it[k]=raw[k]});
+      ['code','nameEn','nameZh','series','zone','image'].forEach(k=>{if(!it[k]&&raw[k])it[k]=raw[k]});
       ['price','special','gwp','bag'].forEach(k=>{if(it[k]===null&&raw[k]!==null)it[k]=raw[k]});
       st.tags.forEach(t=>{if(!it.tags.includes(t))it.tags.push(t)});
       if(raw.status&&!it.statuses.includes(raw.status))it.statuses.push(raw.status);
@@ -418,24 +432,25 @@ function buildItems(rows,headerRow,map,limit){
 }
 function prep(items){
   items.forEach((it,i)=>{it._i=i;
-    it._hay=norm([it.nameZh,it.nameEn,it.series,seriesEn(it.series),it.barcode,it.code,it.counter,
+    it._hay=norm([it.nameZh,it.nameEn,it.series,seriesEn(it.series),it.zone,seriesEn(it.zone),it.barcode,it.code,it.counter,
       it.tags.map(t=>TAGS[t].zh+TAGS[t].en).join('')].join('|'))});
 }
 
 /* ================= counters ================= */
 function counterInfo(){
   const m=new Map();
-  DB.items.forEach(it=>{if(!it.counter)return;let c=m.get(it.counter);if(!c){c={n:0,series:new Map(),tags:{}};m.set(it.counter,c)}
-    c.n++;c.series.set(it.series,(c.series.get(it.series)||0)+1);it.tags.forEach(t=>c.tags[t]=(c.tags[t]||0)+1)});
+  DB.items.forEach(it=>{if(!it.counter)return;let c=m.get(it.counter);if(!c){c={n:0,series:new Map(),zones:new Map(),tags:{}};m.set(it.counter,c)}
+    c.n++;c.series.set(it.series,(c.series.get(it.series)||0)+1);if(it.zone)c.zones.set(it.zone,(c.zones.get(it.zone)||0)+1);it.tags.forEach(t=>c.tags[t]=(c.tags[t]||0)+1)});
   return m;
 }
+const ctrName=c=>/^\d+$/.test(c)?`${L().box} ${c}`:(pref.lang==='zh'?c:seriesEn(c));
 function counterLabel(c,info){
   const l=pref.lang;let desc='';
   const dom=Object.entries(info.tags).find(([t,n])=>t!=='sale'&&n/info.n>=.7);
   if(dom)desc=TAGS[dom[0]][l];
-  else{const s=[...info.series.entries()].sort((a,b)=>b[1]-a[1]).map(x=>l==='zh'?x[0]:seriesEn(x[0])).filter(Boolean);
+  else{const src=info.zones.size?info.zones:info.series;const s=[...src.entries()].sort((a,b)=>b[1]-a[1]).map(x=>l==='zh'?x[0]:seriesEn(x[0])).filter(Boolean);
     desc=s.slice(0,2).join(' / ')+(s.length>2?(l==='zh'?' 等':' +'+(s.length-2)):'')}
-  return `${L().box} ${c}${desc?' · '+desc:''}`;
+  return `${ctrName(c)}${desc?' · '+desc:''}`;
 }
 function refreshSelects(){
   const sel=$('fCounter'),cur=state.counter,info=counterInfo();
@@ -463,6 +478,9 @@ function refreshInfo(){
   $('mDefault').style.display=DB.builtIn||!BUILTIN?'none':'';
   $('mClear').style.display=DB.builtIn?'none':'';
 }
+function zoneTag(it,pq){const z=it.zone;if(!z||/^(福袋|滿額贈)$/.test(z))return'';
+  if(it.series&&it.series.toLowerCase().includes(z.toLowerCase()))return'';
+  return `<span class="tag series">${bi(hl(z,pq),hl(seriesEn(z),pq))}</span>`}
 function priceHtml(it){
   if(it.price===0&&!it.special)return `<span class="price">${L().free}</span>`;
   if(it.special)return `<span class="orig">${fmt(it.price)}</span><span class="price sale">${moneyBig(it.special)}</span>`;
@@ -497,7 +515,7 @@ function render(){
   const by={stockDesc:(a,b)=>(b.stock??-1)-(a.stock??-1),stockAsc:(a,b)=>(a.stock??1e9)-(b.stock??1e9),
     priceDesc:(a,b)=>(eff(b)??-1)-(eff(a)??-1),priceAsc:(a,b)=>(eff(a)??1e9)-(eff(b)??1e9),
     sale:(a,b)=>(b.tags.includes('sale')-a.tags.includes('sale')),
-    nameZh:(a,b)=>natCmp(a.nameZh||'￿',b.nameZh||'￿'),nameEn:(a,b)=>natCmp(a.nameEn||'~',b.nameEn||'~')}[state.sort];
+    nameZh:(a,b)=>natCmp(a.nameZh||' ',b.nameZh||' '),nameEn:(a,b)=>natCmp(a.nameEn||'~',b.nameEn||'~')}[state.sort];
   if(by)rows.sort((a,b)=>by(a,b)||a._i-b._i);
 
 
@@ -517,7 +535,7 @@ function render(){
       ${th}<div class="ids">${it.code?`<span class="code">${hl(it.code,pq,true)}</span>`:`<span class="code missing">${l.noCode}</span>`}<span class="bc">${hl(it.barcode,pq,true)}</span></div>
       <div class="pr">${priceHtml(it)}</div>
       <div class="n1">${n1}</div><div class="n2">${n2}</div>
-      <div class="meta"><span class="tags">${it.counter?`<span class="tag ctr">${l.box} ${esc(it.counter)}</span>`:''}${tagHtml(it)}${ser}</span><span class="stock">${l.opening} ${fmt(it.stock)}</span></div>
+      <div class="meta"><span class="tags">${it.counter?`<span class="tag ctr">${esc(ctrName(it.counter))}</span>`:''}${tagHtml(it)}${zoneTag(it,pq)}${ser}</span><span class="stock">${l.opening} ${fmt(it.stock)}</span></div>
       <div class="detail">${detailHtml(it)}${state.open.has(it._i)?imgTag(it,'big'):''}</div></div>`}).join('');
   pager.innerHTML=pages>1?`<button class="btn" data-pg="${state.page-1}" ${state.page<=1?'disabled':''}>${l.prev}</button>
     <span class="hint">${state.page} / ${pages}</span><button class="btn" data-pg="${state.page+1}" ${state.page>=pages?'disabled':''}>${l.next}</button>`:'';
@@ -528,7 +546,7 @@ let pending=null;
 function readSheet(name){
   const rows=XLSX.utils.sheet_to_json(pending.wb.Sheets[name],{header:1,raw:true,defval:''});
   pending.sheetName=name;pending.rows=rows;pending.headerRow=guessHeaderRow(rows);
-  pending.headers=(rows[pending.headerRow]||[]).map(cellStr);pending.map=guessMap(pending.headers);
+  pending.headers=(rows[pending.headerRow]||[]).map(cellStr);pending.map=fixMap(rows,pending.headerRow,guessMap(pending.headers));
 }
 function openMap(){
   const p=pending,l=L(),z=pref.lang==='zh';
@@ -579,7 +597,7 @@ function handleFile(f){
 }
 function useBuiltIn(){
   if(!BUILTIN){DB={items:[],meta:null,builtIn:true};return}
-  const rows=BUILTIN.rows,hr=guessHeaderRow(rows),map=guessMap((rows[hr]||[]).map(cellStr));
+  const rows=BUILTIN.rows,hr=guessHeaderRow(rows),map=fixMap(rows,hr,guessMap((rows[hr]||[]).map(cellStr)));
   const items=buildItems(rows,hr,map,0);prep(items);
   DB={items,meta:{file:BUILTIN.file},builtIn:true};
   if(BUILTIN.currency&&!lsGet(LS+'.pref')?.curSet)pref.cur=BUILTIN.currency;
