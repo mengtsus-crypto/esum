@@ -4,56 +4,86 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>QR Code · Price Check</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@600;700&family=Noto+Sans+TC:wght@500&display=swap">
+<title>QR Code Sign · Price Check</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Space+Grotesk:wght@700&family=Noto+Sans+TC:wght@500&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <style>
 body{margin:0;background:#ECE6D8;font-family:Inter,Arial,sans-serif;color:#16151A}
-.tools{max-width:620px;margin:20px auto 0;padding:0 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:14px}
-.tools input{flex:1;min-width:220px;padding:9px;border:1px solid #D9CFB8;border-radius:8px;font:inherit}
+.tools{max-width:980px;margin:18px auto 0;padding:0 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:14px}
+.tools label{font-weight:600}
+.tools input{flex:1;min-width:240px;padding:9px;border:1px solid #D9CFB8;border-radius:8px;font:inherit}
 .tools button{padding:9px 14px;border:0;border-radius:8px;background:#16151A;color:#fff;font:inherit;font-weight:600;cursor:pointer}
-.sign{width:148mm;min-height:210mm;margin:16px auto 30px;background:#FBF7EE;border-radius:6mm;box-sizing:border-box;padding:16mm 14mm;display:flex;flex-direction:column;align-items:center;text-align:center;gap:7mm;box-shadow:0 2px 10px rgba(0,0,0,.08)}
-.sign img.logo{height:22mm}
-.pill{font-weight:700;color:#6B4300;background:#FDEBB0;border-radius:999px;padding:1.5mm 4mm;font-size:12pt}
-h1{font-family:"Space Grotesk",Inter,sans-serif;font-size:30pt;line-height:1.05;margin:0;letter-spacing:-.02em}
-.zh{font-family:"Noto Sans TC","PingFang TC",sans-serif;font-size:15pt;color:#5F5B52;margin-top:-4mm}
-#qr{background:#fff;border-radius:4mm;padding:5mm;border:2.5mm solid #F2B705}
-#qr svg{display:block;width:70mm;height:70mm}
-.steps{font-size:12pt;color:#5F5B52;line-height:1.5}
-.url{font-size:8pt;color:#8A8478;word-break:break-all}
-@media print{body{background:#fff}.tools{display:none}.sign{box-shadow:none;margin:0 auto}@page{size:A5;margin:0}}
+.tools button.primary{background:#F2B705;color:#16151A}
+.note{max-width:980px;margin:8px auto 0;padding:0 16px;font-size:13px;color:#5F5B52}
+.preview{max-width:980px;margin:14px auto 30px;padding:0 16px}
+.preview img{width:100%;display:block;box-shadow:0 2px 12px rgba(0,0,0,.12);background:#fff}
+@media print{
+  body{background:#fff}.tools,.note{display:none}.preview{margin:0;padding:0;max-width:none}
+  .preview img{width:297mm;height:210mm;box-shadow:none}
+  @page{size:A4 landscape;margin:0}
+}
 </style>
 </head>
 <body>
 <div class="tools">
-  <input id="url" aria-label="Page address">
-  <button id="png" type="button">Download PNG</button>
-  <button id="print" type="button">Print A5</button>
+  <label for="url">QR Code 網址</label>
+  <input id="url">
+  <button class="primary" id="jpg" type="button">下載 A4 JPG</button>
+  <button id="print" type="button">直接列印</button>
 </div>
-<div class="sign" id="sign">
-  <img class="logo" src="muse_logo.png" alt="MUSE">
-  <div class="pill">MUSE@2026AFA</div>
-  <h1>Scan to check<br>the price</h1>
-  <div class="zh">掃描 QR Code 查詢商品價格</div>
-  <div id="qr"></div>
-  <div class="steps">Open your phone camera, scan this code,<br>then scan the barcode on any item.</div>
-</div>
+<div class="note">A4 橫式，內含兩張 A5 直式公告，中間虛線為裁切線。JPG 為 300 dpi（3508 × 2480 px），列印時請選「實際大小 / 100%」。</div>
+<div class="preview"><img id="out" alt="A4 sheet with two A5 QR code signs"></div>
+<canvas id="cv" width="3508" height="2480" hidden></canvas>
 <script>
 const $=id=>document.getElementById(id);
+const W=3508,H=2480,A5=W/2;           // 300 dpi: A4 landscape = 297 × 210 mm
+const C={bg:'#FBF7EE',ink:'#16151A',mute:'#5F5B52',amber:'#F2B705',pill:'#FDEBB0',pillInk:'#6B4300',cut:'#B9AE96'};
 $('url').value=location.href.replace(/qr\.html.*$/,'');
-function draw(){
-  const u=$('url').value.trim();const q=qrcode(0,'M');q.addData(u);q.make();
-  $('qr').innerHTML=q.createSvgTag({cellSize:8,margin:0,scalable:true});
+const logo=new Image();logo.src='muse_logo.png';
+
+function roundRect(x,c,y,w,h,r){x.beginPath();x.moveTo(c+r,y);x.arcTo(c+w,y,c+w,y+h,r);x.arcTo(c+w,y+h,c,y+h,r);x.arcTo(c,y+h,c,y,r);x.arcTo(c,y,c+w,y,r);x.closePath()}
+function drawSign(x,ox,q){
+  const cx=ox+A5/2;
+  x.fillStyle=C.bg;x.fillRect(ox,0,A5,H);
+  // logo
+  if(logo.complete&&logo.naturalWidth){const lh=250,lw=logo.naturalWidth*lh/logo.naturalHeight;x.drawImage(logo,cx-lw/2,150,lw,lh)}
+  // event pill
+  x.font='700 54px Inter, Arial, sans-serif';const pt='MUSE@2026AFA',pw=x.measureText(pt).width+90;
+  x.fillStyle=C.pill;roundRect(x,cx-pw/2,450,pw,96,48);x.fill();
+  x.fillStyle=C.pillInk;x.textAlign='center';x.textBaseline='middle';x.fillText(pt,cx,500);
+  // headline
+  x.fillStyle=C.ink;x.textBaseline='alphabetic';x.font='700 150px "Space Grotesk", Inter, Arial, sans-serif';
+  x.fillText('Scan to check',cx,760);x.fillText('the price',cx,915);
+  x.fillStyle=C.mute;x.font='500 66px "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
+  x.fillText('掃描 QR Code 查詢商品價格',cx,1040);
+  // QR with amber frame
+  const n=q.getModuleCount(),qs=840,cell=Math.floor(qs/n),real=cell*n,pad=60,frame=28,box=real+pad*2;
+  const bx=cx-box/2,by=1130;
+  x.fillStyle=C.amber;roundRect(x,bx-frame,by-frame,box+frame*2,box+frame*2,60);x.fill();
+  x.fillStyle='#FFFFFF';roundRect(x,bx,by,box,box,36);x.fill();
+  x.fillStyle=C.ink;
+  for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect(bx+pad+k*cell,by+pad+r*cell,cell,cell);
+  // steps
+  x.fillStyle=C.mute;x.font='500 52px Inter, Arial, sans-serif';
+  const ty=by+box+frame+130;
+  x.fillText('Open your phone camera and scan this code,',cx,ty);
+  x.fillText('then scan the barcode on any item.',cx,ty+72);
 }
-$('url').addEventListener('input',draw);draw();
-$('print').onclick=()=>window.print();
-$('png').onclick=()=>{
-  const u=$('url').value.trim();const q=qrcode(0,'M');q.addData(u);q.make();
-  const n=q.getModuleCount(),cell=Math.ceil(1200/(n+8)),size=cell*(n+8),c=document.createElement('canvas');c.width=c.height=size;
-  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,size,size);x.fillStyle='#16151A';
-  for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect((k+4)*cell,(r+4)*cell,cell,cell);
-  const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='price-check-qr.png';a.click();
-};
+async function render(){
+  const u=$('url').value.trim();if(!u)return;
+  try{await Promise.all([document.fonts.load('700 150px "Space Grotesk"'),document.fonts.load('700 54px Inter'),document.fonts.load('500 66px "Noto Sans TC"','掃描查詢商品價格')])}catch(e){}
+  if(!logo.complete)await new Promise(r=>{logo.onload=logo.onerror=r});
+  const q=qrcode(0,'M');q.addData(u);q.make();
+  const x=$('cv').getContext('2d');x.fillStyle='#FFFFFF';x.fillRect(0,0,W,H);
+  drawSign(x,0,q);drawSign(x,A5,q);
+  // cut line
+  x.strokeStyle=C.cut;x.lineWidth=4;x.setLineDash([28,22]);x.beginPath();x.moveTo(A5,0);x.lineTo(A5,H);x.stroke();x.setLineDash([]);
+  $('out').src=$('cv').toDataURL('image/jpeg',0.92);
+}
+let t;$('url').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(render,300)});
+$('jpg').onclick=async()=>{await render();const a=document.createElement('a');a.href=$('cv').toDataURL('image/jpeg',0.95);a.download='MUSE_2026AFA_price-check_A4.jpg';document.body.appendChild(a);a.click();a.remove()};
+$('print').onclick=async()=>{await render();setTimeout(()=>window.print(),200)};
+render();
 </script>
 </body>
 </html>
