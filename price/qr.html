@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>QR Code · Price Check</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@600;700&family=Noto+Sans+TC:wght@500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<style>
+body{margin:0;background:#ECE6D8;font-family:Inter,Arial,sans-serif;color:#16151A}
+.tools{max-width:620px;margin:20px auto 0;padding:0 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:14px}
+.tools input{flex:1;min-width:220px;padding:9px;border:1px solid #D9CFB8;border-radius:8px;font:inherit}
+.tools button{padding:9px 14px;border:0;border-radius:8px;background:#16151A;color:#fff;font:inherit;font-weight:600;cursor:pointer}
+.sign{width:148mm;min-height:210mm;margin:16px auto 30px;background:#FBF7EE;border-radius:6mm;box-sizing:border-box;padding:16mm 14mm;display:flex;flex-direction:column;align-items:center;text-align:center;gap:7mm;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.sign img.logo{height:22mm}
+.pill{font-weight:700;color:#6B4300;background:#FDEBB0;border-radius:999px;padding:1.5mm 4mm;font-size:12pt}
+h1{font-family:"Space Grotesk",Inter,sans-serif;font-size:30pt;line-height:1.05;margin:0;letter-spacing:-.02em}
+.zh{font-family:"Noto Sans TC","PingFang TC",sans-serif;font-size:15pt;color:#5F5B52;margin-top:-4mm}
+#qr{background:#fff;border-radius:4mm;padding:5mm;border:2.5mm solid #F2B705}
+#qr svg{display:block;width:70mm;height:70mm}
+.steps{font-size:12pt;color:#5F5B52;line-height:1.5}
+.url{font-size:8pt;color:#8A8478;word-break:break-all}
+@media print{body{background:#fff}.tools{display:none}.sign{box-shadow:none;margin:0 auto}@page{size:A5;margin:0}}
+</style>
+</head>
+<body>
+<div class="tools">
+  <input id="url" aria-label="Page address">
+  <button id="png" type="button">Download PNG</button>
+  <button id="print" type="button">Print A5</button>
+</div>
+<div class="sign" id="sign">
+  <img class="logo" src="muse_logo.png" alt="MUSE">
+  <div class="pill">MUSE@2026AFA</div>
+  <h1>Scan to check<br>the price</h1>
+  <div class="zh">掃描 QR Code 查詢商品價格</div>
+  <div id="qr"></div>
+  <div class="steps">Open your phone camera, scan this code,<br>then scan the barcode on any item.</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+$('url').value=location.href.replace(/qr\.html.*$/,'');
+function draw(){
+  const u=$('url').value.trim();const q=qrcode(0,'M');q.addData(u);q.make();
+  $('qr').innerHTML=q.createSvgTag({cellSize:8,margin:0,scalable:true});
+}
+$('url').addEventListener('input',draw);draw();
+$('print').onclick=()=>window.print();
+$('png').onclick=()=>{
+  const u=$('url').value.trim();const q=qrcode(0,'M');q.addData(u);q.make();
+  const n=q.getModuleCount(),cell=Math.ceil(1200/(n+8)),size=cell*(n+8),c=document.createElement('canvas');c.width=c.height=size;
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,size,size);x.fillStyle='#16151A';
+  for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect((k+4)*cell,(r+4)*cell,cell,cell);
+  const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='price-check-qr.png';a.click();
+};
+</script>
+</body>
+</html>
