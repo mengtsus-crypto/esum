@@ -1,690 +1,443 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
-<title>展覽現場商品查詢</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<meta name="theme-color" content="#FBF7EE">
+<title>Price Check · MUSE@2026AFA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Noto+Sans+TC:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js" defer></script>
 <style>
-:root{
-  --bg:#f5f4f0;--card:#fff;--ink:#1d1d1b;--mute:#6b6a65;--line:#e3e1da;
-  --accent:#c2410c;--accent-soft:#fff1e8;--zero-bg:#ecf7ee;--zero-ink:#3f7a4c;
-  --sale:#be123c;--sale-soft:#ffe4e9;--bag:#7c3aed;--bag-soft:#f1eafe;--gwp:#0e7490;--gwp-soft:#e0f5f9;
-  --hl:#fff3a3;--radius:12px;
-}
+:root{--bg:#FBF7EE;--ink:#16151A;--mute:#5F5B52;--line:#E7DFCD;--card:#FFFFFF;--amber:#F2B705;--amber-ic:#E8921A;
+  --pill:#FDEBB0;--pill-ink:#6B4300;--sale:#B42318;--ok:#15803D;--photo:#F1EBDD;--photo-bd:#D9CFB8;--err-bg:#FDECEA;--err-ink:#7A1A12}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);
-  font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
-  font-size:15px;line-height:1.45}
-button,input,select{font:inherit;color:inherit}
-.wrap{max-width:860px;margin:0 auto;padding:0 12px 60px}
-header{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 0 8px;border-bottom:1px solid var(--line)}
-.top{display:flex;align-items:center;gap:8px;justify-content:space-between}
-h1{font-size:18px;margin:0;letter-spacing:.02em}
-h1 small{display:block;font-size:12px;color:var(--mute);font-weight:400;margin-top:2px}
-.btn{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 12px;cursor:pointer;white-space:nowrap}
-.btn:hover{border-color:#c9c6bc}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn.ghost{background:transparent}
-.lang{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
-.lang button{border:0;background:transparent;padding:8px 11px;cursor:pointer;font-weight:600;color:var(--mute)}
-.lang button.on{background:var(--ink);color:#fff}
-.search{display:flex;gap:6px;margin-top:10px}
-.search input{flex:1;min-width:0;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);font-size:16px}
-.search input:focus{outline:none;border-color:var(--accent)}
-.filters{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.filters #fCounter{grid-column:1 / -1}@media(min-width:600px){.filters{grid-template-columns:1.6fr 1fr 1.1fr}.filters #fCounter{grid-column:auto}}
-.filters select{width:100%;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
-.row2{display:flex;align-items:center;margin-top:8px;gap:6px;overflow-x:auto;scrollbar-width:none;white-space:nowrap}.row2::-webkit-scrollbar{display:none}
-.chk{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;margin-right:4px}
-.chk input{width:18px;height:18px;accent-color:var(--accent)}
-.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 9px;font-size:12.5px;cursor:pointer}
-.chip.on.sale{background:var(--sale);border-color:var(--sale);color:#fff}
-.chip.on.bag{background:var(--bag);border-color:var(--bag);color:#fff}
-.chip.on.gwp{background:var(--gwp);border-color:var(--gwp);color:#fff}
-.hint{font-size:12px;color:var(--mute)}
-.mode{font-size:12px;color:var(--mute);margin-top:5px;min-height:1em}
-.summary{display:flex;gap:6px;margin:12px 0 4px}
-.stat{flex:1 1 auto;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:8px 10px}
-.stat b{display:block;font-size:17px;white-space:nowrap;font-variant-numeric:tabular-nums}
-.stat span{font-size:11.5px;color:var(--mute);white-space:nowrap}
-.list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-.item{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:9px 11px;cursor:pointer;
-  display:grid;grid-template-columns:52px minmax(0,1fr) auto;column-gap:10px;row-gap:1px;align-items:start;
-  grid-template-areas:"th ids pr" "th n1 n1" "th n2 n2" "meta meta meta" "dt dt dt"}
-.item.nt{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"ids pr" "n1 n1" "n2 n2" "meta meta" "dt dt"}
-.thumb{grid-area:th;grid-row:1 / span 3;width:52px;height:52px;border-radius:8px;object-fit:contain;background:#f3f2ee;border:1px solid var(--line)}
-.big{display:block;max-width:220px;width:100%;margin-top:8px;border-radius:10px;border:1px solid var(--line);background:#f3f2ee}
-.item.zero{background:var(--zero-bg);border-color:#cfe6d3}
-.ids{grid-area:ids;display:flex;gap:8px;align-items:baseline;white-space:nowrap;overflow:hidden;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;padding-top:3px}
-.ids .code{font-weight:700;color:var(--ink)}
-.ids .code.missing{font-weight:400;font-style:italic;color:#a3a199;font-family:inherit;font-size:12px}
-.ids .bc{color:#2f5fa7;overflow:hidden;text-overflow:ellipsis}
-.pr{grid-area:pr;display:flex;align-items:baseline;gap:6px;justify-content:flex-end}
-.n1{grid-area:n1;font-weight:600;font-size:15px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
-.n2{grid-area:n2;font-size:12.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.item.open .n1{-webkit-line-clamp:unset;display:block}
-.item.open .n2{white-space:normal}
-.missing{font-style:italic;color:#a3a199;font-weight:400}
-.meta{grid-area:meta;display:flex;gap:5px;align-items:center;font-size:12.5px;color:var(--mute);margin-top:5px;min-width:0}
-.meta .tags{display:flex;gap:5px;min-width:0;overflow:hidden;flex:1 1 auto}
-.tag{border-radius:6px;padding:1px 7px;font-weight:600;font-size:12px;white-space:nowrap}
-.tag.ctr{background:var(--accent-soft);color:var(--accent)}
-.tag.series{background:#eef0f6;color:#3d4a6b;font-weight:500}
-.tag.sale{background:var(--sale-soft);color:var(--sale)}
-.tag.bag{background:var(--bag-soft);color:var(--bag)}
-.tag.gwp{background:var(--gwp-soft);color:var(--gwp)}
-.tag i{font-style:normal;font-weight:400;opacity:.75;margin-left:3px}
-.bc{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#2f5fa7;text-decoration:none;font-size:13px}
-.bc b{color:var(--accent)}
-.price{font-size:22px;line-height:1.1;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
-.price small{font-size:11.5px;font-weight:600;margin-right:2px}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-text-size-adjust:100%}
+button,input{font:inherit;color:inherit}
+.app{max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.screen{flex:1;display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
+.screen[hidden]{display:none}
+.h-font{font-family:"Space Grotesk",Inter,sans-serif}
+.zh{font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+.top{display:flex;align-items:center;justify-content:space-between;padding:12px 12px 6px;flex-shrink:0}
+.top .ttl{font-family:"Space Grotesk",Inter,sans-serif;font-weight:600;font-size:17px}
+.iconbtn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;border:0;background:transparent;cursor:pointer;color:inherit}
+.iconbtn:focus-visible,.btn:focus-visible{outline:3px solid #2563EB;outline-offset:2px}
+.spacer{width:44px;height:44px}
+.body{flex:1;padding:4px 24px 0;display:flex;flex-direction:column;gap:16px}
+.actions{padding:16px 24px 24px;display:flex;flex-direction:column;gap:10px}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;min-height:56px;border-radius:14px;border:0;cursor:pointer;font-weight:700;font-size:17px;text-decoration:none;padding:0 16px;width:100%}
+.btn.primary{background:var(--amber);color:var(--ink)}
+.btn.primary:active{filter:brightness(.95)}
+.btn.primary:disabled{background:#E7E1D3;color:#6F6B62;cursor:default}
+.btn.secondary{min-height:52px;background:var(--card);color:var(--ink);border:1.5px solid var(--line);font-weight:600;font-size:16px}
+.btn.ghost-dark{min-height:52px;background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.3);font-weight:600;font-size:16px}
+.muted{color:var(--mute)}
+/* start */
+.brand{display:flex;align-items:center;justify-content:space-between;padding:22px 24px 0}
+.brand img{height:44px;width:auto;display:block}
+.pill{font-size:13px;font-weight:700;color:var(--pill-ink);background:var(--pill);border-radius:999px;padding:5px 11px}
+.hero{flex:1;display:flex;flex-direction:column;justify-content:center;padding:24px;gap:18px}
+.tile{width:112px;height:112px;border-radius:28px;background:var(--card);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--amber-ic)}
+.hero h1{margin:8px 0 0;font-size:40px;line-height:1.05;letter-spacing:-.025em;font-weight:700}
+.hero p{margin:0;font-size:17px;line-height:1.5;max-width:300px}
+.foot{margin:6px 0 0;font-size:13px;line-height:1.5;text-align:center}
+/* scan */
+#scan{background:#2A2724;color:#fff;position:relative}
+.cam{position:absolute;inset:0;overflow:hidden;background:#2A2724}
+.cam video{width:100%;height:100%;object-fit:cover;display:block}
+.scan-ui{position:relative;z-index:2;display:flex;flex-direction:column;flex:1}
+.frame-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:22px}
+.frame{position:relative;width:min(300px,80vw);height:180px;border-radius:18px;box-shadow:0 0 0 2000px rgba(20,18,15,.55)}
+.frame i{position:absolute;width:36px;height:36px;border:4px solid #fff}
+.frame i:nth-child(1){left:0;top:0;border-right:0;border-bottom:0;border-top-left-radius:16px}
+.frame i:nth-child(2){right:0;top:0;border-left:0;border-bottom:0;border-top-right-radius:16px}
+.frame i:nth-child(3){left:0;bottom:0;border-right:0;border-top:0;border-bottom-left-radius:16px}
+.frame i:nth-child(4){right:0;bottom:0;border-left:0;border-top:0;border-bottom-right-radius:16px}
+.laser{position:absolute;left:18px;right:18px;top:50%;height:3px;border-radius:2px;background:var(--amber);animation:laser 1.8s ease-in-out infinite}
+@keyframes laser{0%,100%{transform:translateY(-55px)}50%{transform:translateY(55px)}}
+@media (prefers-reduced-motion:reduce){.laser{animation:none}}
+.scan-msg{text-align:center;padding:0 30px}
+.scan-msg b{display:block;font-size:19px;font-weight:600}
+.scan-msg span{display:block;font-size:15px;color:#D6D1C8;margin-top:6px}
+.torch{width:56px;height:56px;border-radius:999px;background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;align-self:center}
+.torch[aria-pressed="true"]{background:var(--amber);color:var(--ink);border-color:var(--amber)}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:5;background:var(--card);color:var(--ink);border-radius:26px 26px 0 0;padding:12px 24px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:16px;max-width:480px;margin:0 auto}
+.sheet[hidden]{display:none}
+.grip{width:40px;height:5px;border-radius:3px;background:var(--line);align-self:center}
+.tip{display:flex;align-items:center;gap:12px;font-size:15px;line-height:1.35}
+.tip div{width:38px;height:38px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+/* result */
+.photo{height:230px;border-radius:18px;background:var(--photo);border:1.5px dashed var(--photo-bd);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--mute)}
+.photo.has{border-style:solid;border-color:var(--line);background:#fff}
+.photo img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.found{display:flex;align-items:center;gap:8px;color:var(--ok);font-size:14px;font-weight:600}
+.names h2{overflow-wrap:anywhere;margin:0;font-size:22px;line-height:1.25;font-weight:600;letter-spacing:-.01em}
+.names div{overflow-wrap:anywhere;font-size:16px;line-height:1.45;color:var(--mute);margin-top:6px}
+.price-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:14px;flex-wrap:wrap}
+.price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.price .cur{font-size:20px;font-weight:600}
+.price .num{font-family:"Space Grotesk",Inter,sans-serif;font-size:52px;line-height:1;font-weight:700;letter-spacing:-.03em}
 .price.sale{color:var(--sale)}
-.orig{font-size:12px;color:var(--mute);text-decoration:line-through;font-variant-numeric:tabular-nums;white-space:nowrap}
-.stock{flex:0 0 auto;margin-left:auto;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap}
-.item.zero .stock{color:var(--zero-ink);font-weight:600}
-.detail{grid-area:dt;display:none;border-top:1px dashed var(--line);margin-top:6px;padding-top:6px;font-size:13px}
-.item.open .detail{display:block}
-.detail dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0}
-.detail dt{color:var(--mute);white-space:nowrap}
-.detail dd{margin:0;word-break:break-word}
-.detail a{color:#2f5fa7}
-mark{background:var(--hl);color:inherit;padding:0 1px;border-radius:2px}
-.pager{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:14px}
-.empty{text-align:center;color:var(--mute);padding:40px 16px;background:var(--card);border:1px dashed var(--line);border-radius:var(--radius);margin-top:14px}
-.empty h2{font-size:17px;color:var(--ink);margin:0 0 6px}
-.empty .btns{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap}
-.help{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;margin-top:14px;font-size:13.5px}
-.help summary{cursor:pointer;font-weight:600}
-.help code{background:#f1efe9;padding:1px 5px;border-radius:4px}
-.help ul{padding-left:18px;margin:6px 0}
-.modal{position:fixed;inset:0;background:rgba(20,20,18,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}
-.modal.open{display:flex}
-.sheet{background:var(--card);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px}
-@media(min-width:640px){.modal{align-items:center}.sheet{border-radius:16px}}
-.sheet h3{margin:0 0 4px;font-size:17px}
-.map{display:grid;grid-template-columns:130px 1fr;gap:7px;align-items:center;margin:12px 0}
-.map label{font-size:13.5px}
-.map label i{color:var(--accent);font-style:normal}
-.map select,.sheet select{padding:7px;border:1px solid var(--line);border-radius:8px;width:100%;background:#fff}
-.preview{font-size:12px;border-collapse:collapse;width:100%;margin-top:6px}
-.preview td,.preview th{border:1px solid var(--line);padding:3px 5px;text-align:left;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis}
-.preview th{background:#f6f5f1}
-.sheet .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
-.err{color:#b91c1c;font-size:13px;margin-top:6px}
-.lock{position:fixed;inset:0;z-index:40;background:var(--bg);display:none;align-items:center;justify-content:center;padding:20px}
-.lock.open{display:flex}
-.lock form{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 20px;width:100%;max-width:360px;text-align:center}
-.lock h2{margin:0 0 4px;font-size:19px}
-.lock input[type=password]{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px;font-size:16px;margin:14px 0 8px;text-align:center}
-.lock input[type=password]:focus{outline:none;border-color:var(--accent)}
-.lock .btn{width:100%;padding:11px;margin-top:8px}
-.lock .lang{margin-bottom:12px}
-.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222;color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30}
-.toast.show{opacity:1}
+.price s{font-size:18px;color:var(--mute);margin-left:4px}
+.badge{font-weight:700;font-size:14px;border-radius:8px;padding:6px 10px;white-space:nowrap}
+.badge.sale{background:var(--sale);color:#fff}
+.badge.info{background:var(--pill);color:var(--pill-ink)}
+.code-line{font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
+/* manual */
+.help-card{background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:18px 16px 14px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.help-card svg{max-width:100%;height:auto}
+.hint-strong{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:#9A5B00}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-size:14px;font-weight:600}
+.field input{height:58px;border-radius:14px;border:2px solid var(--line);background:#fff;padding:0 16px;font-size:22px;letter-spacing:.12em;font-variant-numeric:tabular-nums;width:100%}
+.field input:focus{outline:none;border-color:var(--amber-ic)}
+.field input.ok{border-color:var(--ok)}
+.field input.err{border-color:var(--sale)}
+.counter{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;color:var(--mute)}
+.counter.ok{color:var(--ok)}.counter.err{color:var(--sale)}
+.alert{display:flex;gap:10px;align-items:flex-start;background:var(--err-bg);border-radius:12px;padding:12px 14px;color:var(--err-ink);font-size:14.5px;line-height:1.45}
+.alert[hidden]{display:none}
+/* message screens */
+.msg{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 30px;gap:14px}
+.msg .ico{width:76px;height:76px;border-radius:22px;background:var(--err-bg);color:var(--sale);display:flex;align-items:center;justify-content:center}
+.msg h2{margin:6px 0 0;font-size:26px;line-height:1.2;letter-spacing:-.015em;font-weight:700}
+.msg p{margin:0;font-size:16px;line-height:1.55;color:var(--mute)}
+.steps{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:4px}
+.steps div{text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.5;color:var(--mute)}
+.steps b{display:block;font-size:13px;color:var(--ink)}
+.loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(251,247,238,.85);z-index:20;font-weight:600}
+.loading[hidden]{display:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
-<header>
-  <div class="wrap" style="padding-bottom:0">
+<div class="app">
+
+<!-- ========== START ========== -->
+<section class="screen" id="start">
+  <div class="brand">
+    <img src="muse_logo.png" alt="MUSE">
+    <div class="pill">MUSE@2026AFA</div>
+  </div>
+  <div class="hero">
+    <div class="tile" aria-hidden="true"><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 8v8M11 8v8M13.5 8v8M16 8v8"/></svg></div>
+    <h1 class="h-font">Check a price<br>in one scan.</h1>
+    <p class="muted">Scan the barcode on any item to see its name and price.</p>
+  </div>
+  <div class="actions">
+    <button class="btn primary" type="button" data-go="scan"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg> Scan barcode</button>
+    <button class="btn secondary" type="button" data-go="manual"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg> Type the barcode number</button>
+    <p class="foot muted">Prices in <span data-cur>SGD</span>. Need help? Ask any staff member.</p>
+  </div>
+</section>
+
+<!-- ========== SCAN ========== -->
+<section class="screen" id="scan" hidden>
+  <div class="cam"><video id="video" playsinline muted autoplay></video></div>
+  <div class="scan-ui">
     <div class="top">
-      <h1><span data-t="title"></span><small id="dataInfo"></small></h1>
-      <div style="display:flex;gap:6px;align-items:center">
-        <div class="lang" role="group" aria-label="Language">
-          <button type="button" data-lang="zh">中</button><button type="button" data-lang="en">EN</button>
-        </div>
-        <button class="btn ghost" id="btnMenu" aria-label="Menu">⋯</button>
-      </div>
+      <button class="iconbtn" type="button" data-go="start" aria-label="Close"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="ttl">Scan barcode</div><div class="spacer"></div>
     </div>
-    <form class="search" id="searchForm" autocomplete="off">
-      <input id="q" type="search" inputmode="search">
-      <button class="btn primary" type="submit" data-t="search"></button>
-    </form>
-    <div class="mode" id="modeLine"></div>
-    <div class="filters">
-      <select id="fCounter"></select>
-      <select id="fSize"></select>
-      <select id="fSort"></select>
+    <div class="frame-wrap">
+      <div class="frame" id="frame"><i></i><i></i><i></i><i></i><div class="laser"></div></div>
+      <div class="scan-msg" aria-live="polite"><b id="scanTitle">Fit the barcode inside the frame</b><span id="scanSub">Hold still – it scans automatically.</span></div>
     </div>
-    <div class="row2">
-      <label class="chk"><input type="checkbox" id="fStock"> <span data-t="inStock"></span></label>
-      <button type="button" class="chip sale" data-tag="sale"></button>
-      <button type="button" class="chip bag" data-tag="bag"></button>
-      <button type="button" class="chip gwp" data-tag="gwp"></button>
-    </div>
-  </div>
-</header>
-
-<main class="wrap">
-    <div id="list" class="list"></div>
-  <div id="pager" class="pager"></div>
-  <details class="help" id="help"><summary data-t="helpTitle"></summary><div id="helpBody"></div></details>
-</main>
-
-<input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
-
-<div class="modal" id="mapModal" role="dialog" aria-modal="true">
-  <div class="sheet">
-    <h3 data-t="mapTitle"></h3>
-    <div class="hint" id="mapFile"></div>
-    <div id="sheetPick" style="margin-top:8px"></div>
-    <div class="map" id="mapGrid"></div>
-    <div class="hint" data-t="preview5"></div>
-    <div style="overflow:auto"><table class="preview" id="mapPreview"></table></div>
-    <div class="err" id="mapErr"></div>
     <div class="actions">
-      <button class="btn" id="mapCancel" data-t="cancel"></button>
-      <button class="btn primary" id="mapOk" data-t="doImport"></button>
+      <button class="torch" type="button" id="torch" aria-label="Flashlight" aria-pressed="false" hidden><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8l-2 6v12h-4V9z"/><path d="M10 13h4"/></svg></button>
+      <button class="btn ghost-dark" type="button" data-go="manual"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg> Type the number instead</button>
     </div>
   </div>
-</div>
-
-<div class="modal" id="menuModal" role="dialog" aria-modal="true">
-  <div class="sheet">
-    <h3 data-t="menuTitle"></h3>
-    <p class="hint" id="menuInfo"></p>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
-      <button class="btn" id="mImport" data-t="mImport"></button>
-      <button class="btn" id="mDefault" data-t="mDefault"></button>
-      <label class="hint" style="display:flex;align-items:center;gap:8px"><span data-t="currency" style="white-space:nowrap"></span>
-        <select id="mCur"><option>SGD</option><option>RM</option><option>NT$</option><option>HK$</option><option>S$</option><option>$</option></select></label>
-      <button class="btn" id="mClear" style="color:#b91c1c" data-t="mClear"></button>
-      <button class="btn" id="mLock" data-t="mLock" style="display:none"></button>
-      <button class="btn ghost" id="mClose" data-t="close"></button>
+  <div class="sheet" id="failSheet" role="dialog" aria-labelledby="failTitle" hidden>
+    <div class="grip"></div>
+    <div>
+      <h2 id="failTitle" class="h-font" style="margin:0;font-size:24px;letter-spacing:-.015em">Can't read the barcode</h2>
+      <p class="muted" style="margin:6px 0 0;font-size:15px;line-height:1.5">Some phone cameras have trouble with small or shiny barcodes. Try this:</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="tip"><div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M11 8.5v5M8.5 11h5"/></svg></div>Move a little closer or further away</div>
+      <div class="tip"><div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></div>Find better light and avoid glare</div>
+      <div class="tip"><div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11V6a1.5 1.5 0 0 1 3 0v4M10 10V4.5a1.5 1.5 0 0 1 3 0V10M13 10V5.5a1.5 1.5 0 0 1 3 0V11M16 11V8a1.5 1.5 0 0 1 3 0v6a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-3l-2.5-4a1.5 1.5 0 0 1 2.4-1.8L7 14"/></svg></div>Hold the phone steady for 2 seconds</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+      <button class="btn primary" type="button" data-go="manual">Type the number instead</button>
+      <button class="btn secondary" type="button" id="retryScan">Try scanning again</button>
     </div>
   </div>
-</div>
+</section>
 
-<div class="lock" id="lock">
-  <form id="lockForm" autocomplete="off">
-    <div class="lang" role="group"><button type="button" data-lang="zh">中</button><button type="button" data-lang="en">EN</button></div>
-    <h2 data-t="title"></h2>
-    <div class="hint" data-t="lockHint"></div>
-    <input type="password" id="pw" autocomplete="current-password">
-    <label class="chk hint" style="justify-content:center"><input type="checkbox" id="pwRemember" checked> <span data-t="remember"></span></label>
-    <div class="err" id="pwErr"></div>
-    <button class="btn primary" type="submit" data-t="unlock"></button>
+<!-- ========== RESULT ========== -->
+<section class="screen" id="result" hidden>
+  <div class="top">
+    <button class="iconbtn" type="button" data-go="start" aria-label="Back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="ttl">Price</div><div class="spacer"></div>
+  </div>
+  <div class="body">
+    <div class="photo" id="rPhoto"></div>
+    <div class="found"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg> Item found</div>
+    <div class="names"><h2 class="h-font" id="rEn"></h2><div class="zh" lang="zh-Hant" id="rZh"></div></div>
+    <div class="price-row" id="rPrice"></div>
+    <div class="code-line" id="rCode"></div>
+  </div>
+  <div class="actions">
+    <button class="btn primary" type="button" data-go="scan"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg> Scan next item</button>
+    <button class="btn secondary" type="button" data-go="manual">Type a number</button>
+  </div>
+</section>
+
+<!-- ========== MANUAL ========== -->
+<section class="screen" id="manual" hidden>
+  <div class="top">
+    <button class="iconbtn" type="button" data-go="start" aria-label="Back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="ttl">Type the barcode number</div><div class="spacer"></div>
+  </div>
+  <form class="body" id="manualForm" novalidate>
+    <div class="help-card">
+      <div id="helpBarcode"></div>
+      <div class="hint-strong"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg> Type the 13 digits under the lines</div>
+      <div class="muted" style="font-size:13.5px;text-align:center;line-height:1.45">Usually on a sticker on the back or bottom of the package.</div>
+    </div>
+    <div class="field">
+      <label for="code">Barcode number</label>
+      <input id="code" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="16" placeholder="e.g. 4712926896570" aria-describedby="counter codeErr">
+      <div class="counter" id="counter">0 / 13 digits</div>
+    </div>
+    <div class="alert" id="codeErr" role="alert" hidden></div>
+    <button type="submit" class="sr" tabindex="-1">Check price</button>
   </form>
+  <div class="actions">
+    <button class="btn primary" type="button" id="checkBtn" disabled>Check price</button>
+    <button class="btn secondary" type="button" data-go="scan"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg> Try scanning instead</button>
+  </div>
+</section>
+
+<!-- ========== NOT FOUND ========== -->
+<section class="screen" id="notfound" hidden>
+  <div class="top">
+    <button class="iconbtn" type="button" data-go="start" aria-label="Back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="ttl">Price</div><div class="spacer"></div>
+  </div>
+  <div class="msg">
+    <div class="ico"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M8.8 8.8l4.4 4.4M13.2 8.8l-4.4 4.4"/></svg></div>
+    <h2 class="h-font">Item not found</h2>
+    <p>Barcode <strong id="nfCode" style="color:var(--ink);font-variant-numeric:tabular-nums"></strong> isn't on this event's price list.</p>
+    <p>Please ask a staff member for the price.</p>
+  </div>
+  <div class="actions">
+    <button class="btn primary" type="button" data-go="scan">Scan next item</button>
+    <button class="btn secondary" type="button" data-go="manual">Re-enter the number</button>
+  </div>
+</section>
+
+<!-- ========== CAMERA BLOCKED ========== -->
+<section class="screen" id="camoff" hidden>
+  <div class="top">
+    <button class="iconbtn" type="button" data-go="start" aria-label="Back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="ttl">Scan barcode</div><div class="spacer"></div>
+  </div>
+  <div class="msg">
+    <div class="ico"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M3 3l18 18"/></svg></div>
+    <h2 class="h-font" id="camTitle">Camera access is off</h2>
+    <p id="camText">To scan, allow this page to use your camera. Then reload the page.</p>
+    <div class="steps" id="camSteps">
+      <div><b>iPhone (Safari)</b>Tap <strong>aA</strong> in the address bar → <strong>Website Settings</strong> → <strong>Camera</strong> → <strong>Allow</strong></div>
+      <div><b>Android (Chrome)</b>Tap the icon left of the address → <strong>Permissions</strong> → <strong>Camera</strong> → <strong>Allow</strong></div>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="btn primary" type="button" data-go="manual">Type the number instead</button>
+    <button class="btn secondary" type="button" data-go="scan">Try again</button>
+  </div>
+</section>
+
 </div>
-<div class="toast" id="toast"></div>
+<div class="loading" id="loading" hidden>Loading price list…</div>
 
 <script>
 (function(){
-const LS='boothLookup.v2';
 const $=id=>document.getElementById(id);
+const SCAN_TIMEOUT=12000;
+let PRICES=null,loadErr=null,CUR='SGD';
+let stream=null,scanTimer=null,failTimer=null,busy=false,lastCode='',lastCount=0,detector=null,zx=null,torchOn=false;
 
-/* ================= i18n ================= */
-const T={
-zh:{title:'展覽現場商品查詢',search:'搜尋',ph:'條碼末6碼 / 品號 / 中英文關鍵字（芙莉蓮&立牌）',inStock:'有庫存',
-  allCounters:'全部櫃號',box:'櫃',perPage:n=>n?`${n} 筆/頁`:'全部顯示',
-  sort:{default:'預設排序',stockDesc:'庫存 多→少',stockAsc:'庫存 少→多',priceDesc:'售價 高→低',priceAsc:'售價 低→高',sale:'特價優先',nameZh:'中文品名',nameEn:'英文品名'},
-  found:n=>`${n} 筆`,items:'品項數',boxItems:c=>`${c} 品項`,stock:'期初庫存',amount:'庫存金額',zero:'庫存為 0',
-  price:'售價',salePrice:'特價',opening:'期初',free:'贈品',noZh:'（無中文品名）',noCode:'無品號',noEn:'（無英文品名）',
-  bcMode:d=>`條碼 / 品號查詢：含「${d}」`,kwMode:'關鍵字：',and:' 且 ',or:'　或　',
-  none:'查無商品',noneHint:'試試較短的條碼末碼、換個關鍵字，或取消篩選。',prev:'上一頁',next:'下一頁',
-  emptyT:'沒有資料',emptyB:'請匯入商品清單 Excel / CSV。',importBtn:'匯入 Excel / CSV',
-  dCode:'品號',dBarcode:'條碼',dSource:'出貨來源',dImg:'商品圖片',open:'開啟',dGoogle:'Google 搜圖',dBag:'福袋數量',bags:n=>`${n} 袋`,
-  dGwp:'滿額贈門檻',gwpAt:(c,n)=>`消費滿 ${c} ${n}`,dRaw:'原始狀態',tapMore:'點商品看詳細資料',
-  lockHint:'請輸入活動密碼',remember:'記住這台裝置',unlock:'開啟',pwWrong:'密碼不正確',pwNoCrypto:'此瀏覽器不支援解密，請改用 Chrome 或 Safari 最新版',mLock:'鎖定（下次需重新輸入密碼）',helpTitle:'查詢方式 & 匯入格式',menuTitle:'資料管理',mImport:'匯入新清單（覆蓋）',mDefault:'還原為內建 AFA 清單',mClear:'清除這台裝置上匯入的資料',
-  confirmClear:'再按一次確認清除',close:'關閉',currency:'幣別',cancel:'取消',doImport:'匯入',mapTitle:'確認欄位對應',preview5:'預覽前 5 筆',
-  mapFile:(f,h,n)=>`檔案：${f}（標題列：第 ${h} 列，資料 ${n} 列）`,sheet:'工作表',notUsed:'（不使用）',
-  needFields:'請至少指定：',noRows:'沒有讀到任何商品列，請確認標題列與欄位對應。',
-  imported:n=>`已匯入 ${n} 筆`,cleared:'已清除，改用內建清單',restored:'已還原內建清單',libFail:'讀取元件尚未載入，請確認網路後重試',readFail:'無法讀取這個檔案：',
-  info:(n,f,at)=>`${n} 品項・${f}${at?'・'+at:''}`,builtIn:'內建',saveFail:'此瀏覽器無法保存匯入的資料，重新整理後會回到內建清單',
-  menuInfo:(f,n,at)=>`目前資料：${f}（${n} 品項${at?'，'+at+' 匯入':''}）`},
-en:{title:'Booth Product Lookup',search:'Search',ph:'Last 6 digits / item code / keyword (Frieren&stand)',inStock:'In stock',
-  allCounters:'All boxes',box:'Box',perPage:n=>n?`${n} / page`:'Show all',
-  sort:{default:'Default order',stockDesc:'Stock: high→low',stockAsc:'Stock: low→high',priceDesc:'Price: high→low',priceAsc:'Price: low→high',sale:'On sale first',nameZh:'Chinese name',nameEn:'English name'},
-  found:n=>`${n} found`,items:'Items',boxItems:c=>`Box ${c} items`,stock:'Opening stock',amount:'Stock value',zero:'Zero stock',
-  price:'Price',salePrice:'Sale',opening:'Opening',free:'Free',noZh:'(no Chinese name)',noCode:'No item code',noEn:'(no English name)',
-  bcMode:d=>`Barcode / item code contains “${d}”`,kwMode:'Keywords: ',and:' AND ',or:'  OR  ',
-  none:'No products found',noneHint:'Try fewer digits, another keyword, or clear the filters.',prev:'Prev',next:'Next',
-  emptyT:'No data',emptyB:'Import a product list (Excel / CSV).',importBtn:'Import Excel / CSV',
-  dCode:'Item code',dBarcode:'Barcode',dSource:'Shipment',dImg:'Product photo',open:'Open',dGoogle:'Google Images',dBag:'Lucky bags',bags:n=>`${n} bags`,
-  dGwp:'GWP threshold',gwpAt:(c,n)=>`Spend ${c} ${n}+`,dRaw:'Original status',tapMore:'Tap a product for details',
-  lockHint:'Enter the event password',remember:'Remember this device',unlock:'Open',pwWrong:'Wrong password',pwNoCrypto:'This browser cannot decrypt. Please use an up-to-date Chrome or Safari.',mLock:'Lock (password needed next time)',helpTitle:'How to search & import format',menuTitle:'Data',mImport:'Import new list (replace)',mDefault:'Restore built-in AFA list',mClear:'Clear imported data on this device',
-  confirmClear:'Tap again to confirm',close:'Close',currency:'Currency',cancel:'Cancel',doImport:'Import',mapTitle:'Confirm column mapping',preview5:'Preview (first 5 rows)',
-  mapFile:(f,h,n)=>`File: ${f} (header row ${h}, ${n} data rows)`,sheet:'Sheet',notUsed:'(not used)',
-  needFields:'Please map at least: ',noRows:'No product rows found. Check the header row and mapping.',
-  imported:n=>`Imported ${n} rows`,cleared:'Cleared — using built-in list',restored:'Built-in list restored',libFail:'Excel reader not loaded yet. Check the connection and retry.',readFail:'Cannot read this file: ',
-  info:(n,f,at)=>`${n} items · ${f}${at?' · '+at:''}`,builtIn:'built-in',saveFail:'This browser cannot keep imported data; reloading returns to the built-in list',
-  menuInfo:(f,n,at)=>`Current data: ${f} (${n} items${at?', imported '+at:''})`}
-};
-const HELP={
-zh:`<ul>
-<li><b>依條碼：</b>輸入條碼末 6 碼（或任何一段）→ 搜尋。也可以輸入品號（例 <code>AA6N0054234</code>）。</li>
-<li><b>依櫃號：</b>下拉選櫃號，列出該櫃所有商品，並顯示品項數與庫存合計。</li>
-<li><b>依關鍵字：</b>中英文都能搜。<code>&amp;</code> = 都要符合，例 <code>芙莉蓮&amp;立牌</code>、<code>frieren&amp;stand</code>；<b>空白</b> = 符合其一，例 <code>拼圖 puzzle</code>。</li>
-<li><b>標籤：</b>「特價」「福袋」「滿額贈」可快速篩選。特價商品會同時顯示原價與特價。</li>
-<li>點商品可展開：品號、出貨來源、福袋數量、滿額贈門檻、商品圖片連結。</li>
-</ul>
-<p style="margin:8px 0 4px"><b>匯入格式</b>（第一列為欄名，系統自動辨識，也可手動對應）：</p>
-<ul><li>必要：條碼、品名（中文或英文至少一個）、櫃號、售價、期初庫存</li>
-<li>選填：英文品名、品號、作品、特價、狀態（STATUS）、滿額贈門檻（GWP）、福袋數量、圖片連結</li></ul>
-<p class="hint" style="margin:4px 0">匯入的資料只存在這台裝置的瀏覽器，不會上傳；沒有匯入時使用內建的 AFA 清單。</p>`,
-en:`<ul>
-<li><b>By barcode:</b> type the last 6 digits (or any part) → Search. Item codes work too (e.g. <code>AA6N0054234</code>).</li>
-<li><b>By box:</b> pick a box number to list everything in it, with item count and total stock.</li>
-<li><b>By keyword:</b> Chinese or English. <code>&amp;</code> = all must match, e.g. <code>frieren&amp;stand</code>; <b>space</b> = any, e.g. <code>puzzle 拼圖</code>.</li>
-<li><b>Tags:</b> filter by Sale, Lucky Bag or GWP. Sale items show both the original and the sale price.</li>
-<li>Tap a product for item code, shipment source, lucky-bag count, GWP threshold and photo link.</li>
-</ul>
-<p style="margin:8px 0 4px"><b>Import format</b> (first row = headers, auto-detected or mapped by hand):</p>
-<ul><li>Required: barcode, product name (Chinese or English), box no., price, opening stock</li>
-<li>Optional: English name, item code, series, sale price, STATUS, GWP threshold, lucky-bag count, photo link</li></ul>
-<p class="hint" style="margin:4px 0">Imported data stays in this browser only. Without an import, the built-in AFA list is used.</p>`};
+/* ---------- data ---------- */
+const loadPromise=fetch('prices.json',{cache:'no-cache'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})
+  .then(d=>{CUR=d.currency||'SGD';document.querySelectorAll('[data-cur]').forEach(e=>e.textContent=CUR);PRICES=new Map();(d.items||[]).forEach(it=>PRICES.set(it.b,it));return PRICES})
+  .catch(e=>{loadErr=e;throw e});
 
-/* series (作品) English names; data only has Chinese */
-const SERIES_EN={'86-不存在的戰區':'86 EIGHTY-SIX','Hunter':'Hunter x Hunter','JOJO的奇妙冒險':"JoJo's Bizarre Adventure",'T-shirt區':'T-shirts',
- '刀劍神域':'Sword Art Online','家庭教師':'Reborn!','從零開始的異世界生活':'Re:ZERO','戀上換裝娃娃':'My Dress-Up Darling','暗殺教室':'Assassination Classroom',
- '無職轉生':'Mushoku Tensei','膽大黨':'Dandadan','葬送的芙莉蓮':'Frieren','轉生史萊姆':'Reincarnated as a Slime','進擊的巨人':'Attack on Titan',
- '鋼之鍊金術師 BROTHERHOOD':'Fullmetal Alchemist: Brotherhood','間諜家家酒':'Spy x Family','防風少年':'Wind Breaker','鬼滅之刃':'Demon Slayer',
- 'HUNTER':'Hunter x Hunter','JOJO':'JoJo','從零':'Re:ZERO','鋼之鍊金術師':'Fullmetal Alchemist','福袋':'Lucky Bag','滿額贈':'GWP','收銀':'Cashier'};
-const TAGS={sale:{zh:'特價',en:'Sale'},bag:{zh:'福袋',en:'Lucky Bag'},gwp:{zh:'滿額贈',en:'GWP'}};
-const SOURCES={kl:{zh:'吉隆坡倉備貨',en:'KL warehouse'},tw:{zh:'台灣備貨（已裝箱）',en:'Packed in Taiwan'},sh:{zh:'上海新貨',en:'Shanghai new stock'}};
-
-/* ================= fields for import ================= */
-const FIELDS=[
-  {key:'barcode',zh:'條碼',en:'Barcode',req:true,alias:['barcode','條碼','國際條碼','商品條碼','ean','jan']},
-  {key:'code',zh:'品號',en:'Item code',alias:['品號','貨號','商品編號','料號','sku']},
-  {key:'nameEn',zh:'英文品名',en:'English name',alias:['product name','英文品名','english name','name(en)','name']},
-  {key:'nameZh',zh:'中文品名',en:'Chinese name',alias:['中文品名','品名','商品名稱','商品名','名稱']},
-  {key:'counter',zh:'櫃號',en:'Box no.',req:true,alias:['櫃號','box label','box lable','櫃位編號','counter','櫃位']},
-  {key:'series',zh:'作品',en:'Series',alias:['作品','作品名','系列','ip','櫃位']},
-  {key:'zone',zh:'櫃位/區域',en:'Zone',alias:['櫃位','區域','zone','area']},
-  {key:'price',zh:'售價',en:'Price',req:true,alias:['售價','售价','定價','單價','rsp','price','價格']},
-  {key:'stock',zh:'期初庫存',en:'Opening stock',req:true,alias:['期初庫存','期初','order qty','總計','總數','庫存','數量','qty','stock']},
-  {key:'special',zh:'特價',en:'Sale price',alias:['最後現場售價','現場售價','特價','特价','優惠價','final price','sale price','promo price']},
-  {key:'status',zh:'狀態',en:'Status',alias:['status','活動','狀態','備註','note']},
-  {key:'gwp',zh:'滿額贈門檻',en:'GWP threshold',alias:['gwp','滿額贈']},
-  {key:'bag',zh:'福袋數量',en:'Lucky-bag count',alias:['package paper','paper bag','福袋數','福袋']},
-  {key:'image',zh:'圖片連結',en:'Photo link',alias:['圖片連結','圖片','image','photo','img']}
-];
-
-/* ================= state ================= */
-let DB={items:[],meta:null,builtIn:true};
-let BUILTIN=null;
-let pref={lang:'zh',cur:'SGD'};
-let state={q:'',counter:'',onlyStock:false,tag:'',size:20,sort:'default',page:1,open:new Set()};
-const L=()=>T[pref.lang];
-/* thumbnails: hidden automatically where the host blocks outside images */
-const IMG={ok:0,fail:0,blocked:false};
-window.__imgOk=function(el){IMG.ok++};
-window.__imgErr=function(el){const alt=(el.dataset.alt||'').split('|').filter(Boolean);if(alt.length){el.dataset.alt=alt.slice(1).join('|');el.src=alt[0];return}
-  IMG.fail++;const c=el.closest('.item');if(c&&el.classList.contains('thumb'))c.classList.add('nt');el.remove();if(!IMG.ok&&IMG.fail>=8)IMG.blocked=true};
-function imgList(it){if(it.image)return[it.image];if(!/^\d{8,14}$/.test(it.barcode))return[];const b=it.barcode,h='https://products.e-muse.com/';
-  return[`${h}small/${b}.jpg`,`${h}ODM/small/${b}.jpg`,`${h}outsourcing/${b}.jpg`]}
-const imgTag=(it,cls)=>{const u=imgList(it);return u.length&&!IMG.blocked?`<img class="${cls}" src="${esc(u[0])}" data-alt="${esc(u.slice(1).join('|'))}" alt="" loading="lazy" referrerpolicy="no-referrer" onload="__imgOk(this)" onerror="__imgErr(this)">`:''};
-
-function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}}
-function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
-function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
-
-/* ================= utils ================= */
+/* ---------- EAN helpers ---------- */
+function eanValid(c){if(!/^\d{13}$/.test(c))return false;let s=0;for(let i=0;i<12;i++)s+=(+c[i])*(i%2?3:1);return (10-s%10)%10===+c[12]}
+function ean8Valid(c){if(!/^\d{8}$/.test(c))return false;let s=0;for(let i=0;i<7;i++)s+=(+c[i])*(i%2?1:3);return (10-s%10)%10===+c[7]}
+const codeValid=c=>eanValid(c)||ean8Valid(c);
+function normCode(raw){let c=String(raw||'').replace(/\D/g,'');if(c.length===12)c='0'+c;return c}
+const fmt=n=>Number(n).toLocaleString('en-SG',{maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const unent=s=>String(s).replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
-const norm=s=>String(s??'').toLowerCase().normalize('NFKC').replace(/\s+/g,'');
-function toNum(v){if(v===null||v===undefined||v==='')return null;if(typeof v==='number')return v;
-  const s=String(v).replace(/[^\d.\-]/g,'');if(!s)return null;const n=parseFloat(s);return isNaN(n)?null:n}
-function cellStr(v){if(v===null||v===undefined)return'';if(v instanceof Date)return v.toISOString().slice(0,10);
-  const s=unent(String(v).trim());return /^(#N\/A|#REF!|#VALUE!|nothing|n\/a|null)$/i.test(s)?'':s}
-const fmt=n=>n===null||n===undefined?'—':Number(n).toLocaleString('en-US');
-const money=n=>n===null||n===undefined?'—':`${pref.cur} ${fmt(n)}`;
-const moneyBig=n=>n===null||n===undefined?'—':`<small>${pref.cur}</small>${fmt(n)}`;
-const natCmp=(a,b)=>String(a).localeCompare(String(b),'zh-Hant',{numeric:true,sensitivity:'base'});
-function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2400)}
-const seriesEn=s=>SERIES_EN[s]||s;
-/* show both languages; current language first */
-function bi(zh,en,clsA,clsB){const z=pref.lang==='zh';const a=z?zh:en,b=z?en:zh;
-  return `<span class="${clsA||''}">${a}</span>${b&&b!==a?`<i>${b}</i>`:''}`}
 
-/* ================= status parsing ================= */
-function parseStatus(s){
-  const r={tags:new Set(),pct:null,src:null};if(!s)return r;
-  const m=s.match(/特[價价]\s*(\d+)\s*折/);
-  if(m){r.tags.add('sale');const d=m[1];r.pct=d.length===1?+d*10:+d}
-  if(/福袋|goodies|lucky/i.test(s))r.tags.add('bag');
-  if(/滿額贈|满额赠|gwp/i.test(s))r.tags.add('gwp');
-  if(/吉隆坡|warehouse stock/i.test(s))r.src='kl';
-  else if(/already packed|台[湾灣]/i.test(s))r.src='tw';
-  else if(/上海/i.test(s))r.src='sh';
-  return r;
+/* ---------- navigation ---------- */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.hidden=s.id!==id);
+  window.scrollTo(0,0);
+  if(id!=='scan')stopCamera();
+  if(id==='scan')startScan();
+  if(id==='manual'){resetManual();setTimeout(()=>$('code').focus(),60)}
 }
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)show(b.dataset.go)});
 
-/* ================= search ================= */
-function parseQuery(q){
-  q=q.trim();if(!q)return null;
-  if(/^\d{3,}$/.test(q))return{type:'code',digits:q};
-  if(/^[a-z]{1,3}\d[a-z0-9]{4,}$/i.test(q))return{type:'code',digits:q.toUpperCase()};
-  const groups=q.split(/\s+/).map(g=>g.split('&').map(norm).filter(Boolean)).filter(g=>g.length);
-  return{type:'kw',groups};
+/* ---------- lookup ---------- */
+async function lookup(code){
+  if(!PRICES){$('loading').hidden=false;try{await loadPromise}catch(e){}$('loading').hidden=true}
+  if(!PRICES){$('nfCode').textContent=code;show('notfound');return}
+  const it=PRICES.get(code);
+  if(!it){$('nfCode').textContent=code;show('notfound');return}
+  renderResult(it);show('result');
 }
-function matchItem(it,pq){
-  if(!pq)return true;
-  if(pq.type==='code')return it.barcode.toUpperCase().includes(pq.digits)||it.code.toUpperCase().includes(pq.digits);
-  return pq.groups.some(g=>g.every(t=>it._hay.includes(t)));
-}
-function hl(text,pq,isCode){
-  text=String(text??'');if(!pq)return esc(text);
-  if(pq.type==='code'){if(!isCode)return esc(text);const i=text.toUpperCase().lastIndexOf(pq.digits);if(i<0)return esc(text);
-    return esc(text.slice(0,i))+'<b>'+esc(text.slice(i,i+pq.digits.length))+'</b>'+esc(text.slice(i+pq.digits.length))}
-  const terms=[...new Set(pq.groups.flat())].sort((a,b)=>b.length-a.length);if(!terms.length)return esc(text);
-  const re=new RegExp('('+terms.map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi');
-  return text.split(re).map((p,i)=>i%2?'<mark>'+esc(p)+'</mark>':esc(p)).join('');
+function imgList(it){if(it.img)return[it.img];const h='https://products.e-muse.com/';return[`${h}small/${it.b}.jpg`,`${h}ODM/small/${it.b}.jpg`,`${h}outsourcing/${it.b}.jpg`]}
+const PH='<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg><div style="font-size:13px;font-weight:500">No photo</div></div>';
+function renderResult(it){
+  const ph=$('rPhoto');ph.className='photo';ph.innerHTML=PH;
+  const urls=imgList(it);let i=0;const img=new Image();img.alt='';img.referrerPolicy='no-referrer';
+  img.onload=()=>{ph.className='photo has';ph.innerHTML='';ph.appendChild(img)};
+  img.onerror=()=>{i++;if(i<urls.length)img.src=urls[i]};img.src=urls[0];
+  $('rEn').textContent=it.en||it.zh||'';
+  $('rZh').textContent=it.en?(it.zh||''):'';$('rZh').hidden=!it.en||!it.zh;
+  const sale=it.f!=null&&it.f<it.p;let html='';
+  if(sale)html=`<div class="price sale"><span class="cur">${esc(CUR)}</span><span class="num">${fmt(it.f)}</span><s>${esc(CUR)} ${fmt(it.p)}</s></div>`;
+  else html=`<div class="price"><span class="cur muted">${esc(CUR)}</span><span class="num">${fmt(it.p)}</span></div>`;
+  if(it.t==='gwp')html+=`<div class="badge info">Gift with purchase</div>`;
+  else if(it.t==='bag')html+=`<div class="badge info">Lucky bag item</div>`;
+  $('rPrice').innerHTML=html;
+  $('rCode').textContent='Barcode '+it.b;
+  if(navigator.vibrate)try{navigator.vibrate(60)}catch(e){}
 }
 
-/* ================= build items from rows ================= */
-function guessHeaderRow(rows){
-  let best=0,bs=-1;
-  for(let r=0;r<Math.min(rows.length,15);r++){const m=guessMap((rows[r]||[]).map(cellStr));const s=Object.keys(m).length;if(s>bs){bs=s;best=r}}
-  return best;
+/* ---------- camera / scanning ---------- */
+async function startScan(){
+  $('failSheet').hidden=true;busy=false;lastCode='';lastCount=0;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){camBlocked(true);return}
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
+  }catch(e){camBlocked(e&&e.name!=='NotAllowedError'&&e.name!=='SecurityError');return}
+  if($('scan').hidden){stopCamera();return}
+  const v=$('video');v.srcObject=stream;try{await v.play()}catch(e){}
+  setupTorch();
+  // try continuous autofocus where supported
+  try{const tr=stream.getVideoTracks()[0];const caps=tr.getCapabilities?tr.getCapabilities():{};
+    if(caps.focusMode&&caps.focusMode.includes('continuous'))await tr.applyConstraints({advanced:[{focusMode:'continuous'}]})}catch(e){}
+  await initDecoder();
+  armFailTimer();
+  loop();
 }
-function guessMap(headers){
-  const h=headers.map(norm),used=new Set(),map={};
-  FIELDS.forEach(f=>{
-    for(const a of f.alias){const na=norm(a);
-      let i=h.findIndex((c,i)=>c&&!used.has(i)&&c===na);
-      if(i<0&&na.length>1)i=h.findIndex((c,i)=>c&&!used.has(i)&&c.includes(na));
-      if(i>=0){map[f.key]=i;used.add(i);break}}
-  });
-  return map;
+function camBlocked(noCamera){
+  stopCamera();
+  if(noCamera){$('camTitle').textContent='Camera not available';$('camText').textContent='This browser or device cannot open the camera here. You can still type the number.';$('camSteps').hidden=true}
+  else{$('camTitle').textContent='Camera access is off';$('camText').textContent='To scan, allow this page to use your camera. Then reload the page.';$('camSteps').hidden=false}
+  document.querySelectorAll('.screen').forEach(s=>s.hidden=s.id!=='camoff');
 }
-/* if barcode / item-code headers are swapped in the sheet, swap them back by looking at the data */
-function fixMap(rows,headerRow,map){
-  if(map.barcode===undefined||map.code===undefined)return map;
-  const isBc=v=>/^\d{8,14}$/.test(cellStr(v));let a=0,b=0,n=0;
-  for(let r=headerRow+1;r<rows.length&&n<50;r++){const row=rows[r]||[];if(!row.length)continue;n++;
-    if(isBc(row[map.barcode]))a++;if(isBc(row[map.code]))b++}
-  if(b>a){const t=map.barcode;map.barcode=map.code;map.code=t}
-  return map;
+function stopCamera(){
+  clearTimeout(scanTimer);clearTimeout(failTimer);scanTimer=null;
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  const v=$('video');if(v)v.srcObject=null;torchOn=false;$('torch').setAttribute('aria-pressed','false');
 }
-function buildItems(rows,headerRow,map,limit){
-  const get=(row,k)=>map[k]===undefined?'':row[map[k]];
-  const out=[],byKey=new Map();
-  for(let r=headerRow+1;r<rows.length;r++){
-    const row=rows[r]||[];
-    const raw={barcode:cellStr(get(row,'barcode')).replace(/\s/g,''),code:cellStr(get(row,'code')),
-      nameEn:cellStr(get(row,'nameEn')),nameZh:cellStr(get(row,'nameZh')),counter:cellStr(get(row,'counter')),series:cellStr(get(row,'series')),zone:cellStr(get(row,'zone')),
-      price:toNum(get(row,'price')),stock:toNum(get(row,'stock')),special:toNum(get(row,'special')),status:cellStr(get(row,'status')),
-      gwp:toNum(get(row,'gwp')),bag:toNum(get(row,'bag')),image:cellStr(get(row,'image'))};
-    if(!raw.barcode&&!raw.nameZh&&!raw.nameEn)continue;
-    if(raw.image&&!/^https?:\/\//i.test(raw.image))raw.image='';
-    const st=parseStatus(raw.status);
-    if(raw.special!==null&&raw.special>0&&raw.price&&raw.special<raw.price)st.tags.add('sale');else raw.special=null;
-    if(raw.gwp)st.tags.add('gwp');
-    const key=raw.barcode?raw.barcode+'|'+raw.counter:'row'+r;
-    let it=byKey.get(key);
-    if(!it){
-      it={...raw,tags:[...st.tags],pct:st.pct,sources:[],statuses:raw.status?[raw.status]:[]};
-      if(it.special&&!it.pct)it.pct=Math.round(it.special/it.price*100);
-      byKey.set(key,it);out.push(it);
-    }else{ // duplicate barcode in same box (e.g. two shipments) -> merge
-      it.stock=(it.stock||0)+(raw.stock||0);
-      ['code','nameEn','nameZh','series','zone','image'].forEach(k=>{if(!it[k]&&raw[k])it[k]=raw[k]});
-      ['price','special','gwp','bag'].forEach(k=>{if(it[k]===null&&raw[k]!==null)it[k]=raw[k]});
-      st.tags.forEach(t=>{if(!it.tags.includes(t))it.tags.push(t)});
-      if(raw.status&&!it.statuses.includes(raw.status))it.statuses.push(raw.status);
-    }
-    it.sources.push({src:st.src,qty:raw.stock});
-    if(limit&&out.length>=limit)break;
-  }
-  return out;
+function armFailTimer(){clearTimeout(failTimer);failTimer=setTimeout(()=>{if(!$('scan').hidden)$('failSheet').hidden=false},SCAN_TIMEOUT)}
+$('retryScan').onclick=()=>{$('failSheet').hidden=true;armFailTimer()};
+function setupTorch(){
+  const b=$('torch');b.hidden=true;
+  try{const tr=stream.getVideoTracks()[0];const caps=tr.getCapabilities?tr.getCapabilities():{};if(caps.torch)b.hidden=false}catch(e){}
 }
-function prep(items){
-  items.forEach((it,i)=>{it._i=i;
-    it._hay=norm([it.nameZh,it.nameEn,it.series,seriesEn(it.series),it.zone,seriesEn(it.zone),it.barcode,it.code,it.counter,
-      it.tags.map(t=>TAGS[t].zh+TAGS[t].en).join('')].join('|'))});
-}
-
-/* ================= counters ================= */
-function counterInfo(){
-  const m=new Map();
-  DB.items.forEach(it=>{if(!it.counter)return;let c=m.get(it.counter);if(!c){c={n:0,series:new Map(),zones:new Map(),tags:{}};m.set(it.counter,c)}
-    c.n++;c.series.set(it.series,(c.series.get(it.series)||0)+1);if(it.zone)c.zones.set(it.zone,(c.zones.get(it.zone)||0)+1);it.tags.forEach(t=>c.tags[t]=(c.tags[t]||0)+1)});
-  return m;
-}
-const ctrName=c=>/^\d+$/.test(c)?`${L().box} ${c}`:(pref.lang==='zh'?c:seriesEn(c));
-function counterLabel(c,info){
-  const l=pref.lang;let desc='';
-  const dom=Object.entries(info.tags).find(([t,n])=>t!=='sale'&&n/info.n>=.7);
-  if(dom)desc=TAGS[dom[0]][l];
-  else{const src=info.zones.size?info.zones:info.series;const s=[...src.entries()].sort((a,b)=>b[1]-a[1]).map(x=>l==='zh'?x[0]:seriesEn(x[0])).filter(Boolean);
-    desc=s.slice(0,2).join(' / ')+(s.length>2?(l==='zh'?' 等':' +'+(s.length-2)):'')}
-  return `${ctrName(c)}${desc?' · '+desc:''}`;
-}
-function refreshSelects(){
-  const sel=$('fCounter'),cur=state.counter,info=counterInfo();
-  const cs=[...info.keys()].sort(natCmp);
-  sel.innerHTML=`<option value="">${L().allCounters}</option>`+cs.map(c=>`<option value="${esc(c)}">${esc(counterLabel(c,info.get(c)))}</option>`).join('');
-  sel.value=cs.includes(cur)?cur:'';state.counter=sel.value;
-  $('fSize').innerHTML=[10,20,50,0].map(n=>`<option value="${n}" ${n===state.size?'selected':''}>${L().perPage(n)}</option>`).join('');
-  $('fSort').innerHTML=Object.entries(L().sort).map(([k,v])=>`<option value="${k}" ${k===state.sort?'selected':''}>${v}</option>`).join('');
-}
-
-/* ================= render ================= */
-function applyLang(){
-  document.documentElement.lang=pref.lang==='zh'?'zh-Hant':'en';
-  document.title=L().title;
-  document.querySelectorAll('[data-t]').forEach(e=>{const v=L()[e.dataset.t];if(typeof v==='string')e.textContent=v});
-  document.querySelectorAll('[data-lang]').forEach(b=>b.classList.toggle('on',b.dataset.lang===pref.lang));
-  document.querySelectorAll('[data-tag]').forEach(b=>{const t=TAGS[b.dataset.tag];b.innerHTML=pref.lang==='zh'?`${t.zh} <span class="hint" style="color:inherit;opacity:.7">${t.en}</span>`:`${t.en} <span class="hint" style="color:inherit;opacity:.7">${t.zh}</span>`});
-  $('q').placeholder=L().ph;$('helpBody').innerHTML=HELP[pref.lang];
-  refreshSelects();refreshInfo();render();
-}
-function refreshInfo(){
-  const m=DB.meta||{};const n=fmt(DB.items.length);const f=DB.builtIn?(pref.lang==='zh'?`${m.file||'AFA'}（${L().builtIn}）`:`${m.file||'AFA'} (${L().builtIn})`):m.file;
-  $('dataInfo').textContent=DB.items.length?L().info(n,f,DB.builtIn?'':m.at):'';
-  $('menuInfo').textContent=L().menuInfo(f||'—',n,DB.builtIn?'':m.at);
-  $('mDefault').style.display=DB.builtIn||!BUILTIN?'none':'';
-  $('mClear').style.display=DB.builtIn?'none':'';
-}
-function zoneTag(it,pq){const z=it.zone;if(!z||/^(福袋|滿額贈)$/.test(z))return'';
-  if(it.series&&it.series.toLowerCase().includes(z.toLowerCase()))return'';
-  return `<span class="tag series">${bi(hl(z,pq),hl(seriesEn(z),pq))}</span>`}
-function priceHtml(it){
-  if(it.price===0&&!it.special)return `<span class="price">${L().free}</span>`;
-  if(it.special)return `<span class="orig">${fmt(it.price)}</span><span class="price sale">${moneyBig(it.special)}</span>`;
-  return `<span class="price">${moneyBig(it.price)}</span>`;
-}
-function tagHtml(it){
-  return it.tags.map(t=>{
-    let zh=TAGS[t].zh,en=TAGS[t].en;
-    if(t==='sale'&&it.pct){zh=`${String(it.pct).replace(/0$/,'')}折`;en=`${100-it.pct}% OFF`}
-    return `<span class="tag ${t}">${bi(esc(zh),esc(en))}</span>`}).join('');
-}
-function detailHtml(it){
-  const l=L(),rows=[];
-  rows.push([l.dBarcode,`<a class="bc" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(it.barcode)}" target="_blank" rel="noopener">${esc(it.barcode)}</a> <span class="hint">(${l.dGoogle})</span>`]);
-  const src=it.sources.filter(s=>s.src);
-  if(src.length)rows.push([l.dSource,src.map(s=>{const S=SOURCES[s.src];const z=pref.lang==='zh';return `${esc(z?S.zh:S.en)} <span class="hint">${esc(z?S.en:S.zh)}</span>${it.sources.length>1?` × ${fmt(s.qty)}`:''}`}).join('<br>')]);
-  if(it.bag)rows.push([l.dBag,l.bags(fmt(it.bag))]);
-  if(it.gwp)rows.push([l.dGwp,esc(l.gwpAt(pref.cur,fmt(it.gwp)))]);
-  if(it.image)rows.push([l.dImg,`<a href="${esc(it.image)}" target="_blank" rel="noopener">${l.open} ↗</a>`]);
-  if(it.statuses.length&&!src.length&&!it.tags.length)rows.push([l.dRaw,it.statuses.map(esc).join('<br>')]);
-  return `<dl>${rows.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl>`;
-}
-function render(){
-  const list=$('list'),pager=$('pager'),l=L();
-  if(!DB.items.length){pager.innerHTML='';$('modeLine').textContent='';
-    list.innerHTML=`<div class="empty"><h2>${l.emptyT}</h2>${l.emptyB}<div class="btns"><button class="btn primary" data-act="import">${l.importBtn}</button></div></div>`;return}
-  const pq=parseQuery(state.q);
-  const modeTxt=!pq?l.tapMore:pq.type==='code'?l.bcMode(pq.digits):l.kwMode+pq.groups.map(g=>g.join(l.and)).join(l.or);
-  let rows=DB.items.filter(it=>(!state.counter||it.counter===state.counter)&&(!state.onlyStock||(it.stock||0)>0)
-    &&(!state.tag||it.tags.includes(state.tag))&&matchItem(it,pq));
-  const eff=it=>it.special??it.price;
-  const by={stockDesc:(a,b)=>(b.stock??-1)-(a.stock??-1),stockAsc:(a,b)=>(a.stock??1e9)-(b.stock??1e9),
-    priceDesc:(a,b)=>(eff(b)??-1)-(eff(a)??-1),priceAsc:(a,b)=>(eff(a)??1e9)-(eff(b)??1e9),
-    sale:(a,b)=>(b.tags.includes('sale')-a.tags.includes('sale')),
-    nameZh:(a,b)=>natCmp(a.nameZh||' ',b.nameZh||' '),nameEn:(a,b)=>natCmp(a.nameEn||'~',b.nameEn||'~')}[state.sort];
-  if(by)rows.sort((a,b)=>by(a,b)||a._i-b._i);
-
-
-  $('modeLine').textContent=l.found(fmt(rows.length))+'・'+modeTxt;
-  const size=state.size||rows.length||1,pages=Math.max(1,Math.ceil(rows.length/size));
-  if(state.page>pages)state.page=pages;
-  const view=rows.slice((state.page-1)*size,state.page*size);
-  if(!rows.length){list.innerHTML=`<div class="empty"><h2>${l.none}</h2>${l.noneHint}</div>`;pager.innerHTML='';return}
-  const z=pref.lang==='zh';
-  list.innerHTML=view.map(it=>{
-    const zh=it.nameZh?hl(it.nameZh,pq):`<span class="missing">${esc(l.noZh)}</span>`;
-    const en=it.nameEn?hl(it.nameEn,pq):`<span class="missing">${esc(l.noEn)}</span>`;
-    const [n1,n2]=z?[zh,en]:[en,zh];
-    const ser=it.series?`<span class="tag series">${bi(hl(it.series,pq),hl(seriesEn(it.series),pq))}</span>`:'';
-    const th=imgTag(it,'thumb');
-    return `<div class="item${th?'':' nt'}${!(it.stock>0)?' zero':''}${state.open.has(it._i)?' open':''}" data-i="${it._i}">
-      ${th}<div class="ids">${it.code?`<span class="code">${hl(it.code,pq,true)}</span>`:`<span class="code missing">${l.noCode}</span>`}<span class="bc">${hl(it.barcode,pq,true)}</span></div>
-      <div class="pr">${priceHtml(it)}</div>
-      <div class="n1">${n1}</div><div class="n2">${n2}</div>
-      <div class="meta"><span class="tags">${it.counter?`<span class="tag ctr">${esc(ctrName(it.counter))}</span>`:''}${tagHtml(it)}${zoneTag(it,pq)}${ser}</span><span class="stock">${l.opening} ${fmt(it.stock)}</span></div>
-      <div class="detail">${detailHtml(it)}${state.open.has(it._i)?imgTag(it,'big'):''}</div></div>`}).join('');
-  pager.innerHTML=pages>1?`<button class="btn" data-pg="${state.page-1}" ${state.page<=1?'disabled':''}>${l.prev}</button>
-    <span class="hint">${state.page} / ${pages}</span><button class="btn" data-pg="${state.page+1}" ${state.page>=pages?'disabled':''}>${l.next}</button>`:'';
-}
-
-/* ================= import UI ================= */
-let pending=null;
-function readSheet(name){
-  const rows=XLSX.utils.sheet_to_json(pending.wb.Sheets[name],{header:1,raw:true,defval:''});
-  pending.sheetName=name;pending.rows=rows;pending.headerRow=guessHeaderRow(rows);
-  pending.headers=(rows[pending.headerRow]||[]).map(cellStr);pending.map=fixMap(rows,pending.headerRow,guessMap(pending.headers));
-}
-function openMap(){
-  const p=pending,l=L(),z=pref.lang==='zh';
-  $('mapFile').textContent=l.mapFile(p.file,p.headerRow+1,Math.max(0,p.rows.length-p.headerRow-1));
-  const names=p.wb.SheetNames;
-  $('sheetPick').innerHTML=names.length>1?`<label class="hint">${l.sheet} <select id="sheetSel">${names.map(n=>`<option ${n===p.sheetName?'selected':''}>${esc(n)}</option>`).join('')}</select></label>`:'';
-  if(names.length>1)$('sheetSel').onchange=e=>{readSheet(e.target.value);openMap()};
-  const opts=`<option value="">${l.notUsed}</option>`+p.headers.map((h,i)=>`<option value="${i}">${esc(h||'#'+(i+1))}</option>`).join('');
-  $('mapGrid').innerHTML=FIELDS.map(f=>`<label>${z?f.zh:f.en}${f.req?' <i>*</i>':''}</label><select data-k="${f.key}">${opts}</select>`).join('');
-  $('mapGrid').querySelectorAll('select').forEach(s=>{const v=p.map[s.dataset.k];s.value=v===undefined?'':String(v);
-    s.onchange=()=>{p.map[s.dataset.k]=s.value===''?undefined:+s.value;preview()}});
-  $('mapErr').textContent='';preview();$('mapModal').classList.add('open');
-}
-function preview(){
-  const p=pending,z=pref.lang==='zh',fs=FIELDS.filter(f=>p.map[f.key]!==undefined);
-  const items=buildItems(p.rows,p.headerRow,p.map,5);
-  $('mapPreview').innerHTML='<tr>'+fs.map(f=>`<th>${z?f.zh:f.en}</th>`).join('')+'</tr>'+
-    items.map(it=>'<tr>'+fs.map(f=>`<td>${esc(it[f.key]??'')}</td>`).join('')+'</tr>').join('');
-}
-function doImport(){
-  const p=pending,l=L(),z=pref.lang==='zh';
-  const miss=FIELDS.filter(f=>['barcode','counter'].includes(f.key)&&p.map[f.key]===undefined);
-  if(p.map.nameZh===undefined&&p.map.nameEn===undefined)miss.push({zh:'品名',en:'Product name'});
-  if(miss.length){$('mapErr').textContent=l.needFields+miss.map(f=>z?f.zh:f.en).join(z?'、':', ');return}
-  const items=buildItems(p.rows,p.headerRow,p.map,0);
-  if(!items.length){$('mapErr').textContent=l.noRows;return}
-  const d=new Date(),at=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-  prep(items);DB={items,meta:{file:p.file,at},builtIn:false};
-  if(!lsSet(LS+'.data',DB))toast(l.saveFail);else toast(l.imported(fmt(items.length)));
-  $('mapModal').classList.remove('open');pending=null;state.page=1;state.counter='';state.open.clear();
-  refreshSelects();refreshInfo();render();
-}
-function handleFile(f){
-  if(!f)return;const l=L();
-  if(typeof XLSX==='undefined'){toast(l.libFail);return}
-  const rd=new FileReader();
-  rd.onload=e=>{try{
-    let wb;
-    if(/\.csv$/i.test(f.name)){let txt=new TextDecoder('utf-8').decode(e.target.result);
-      if(txt.includes(String.fromCharCode(0xFFFD))){try{txt=new TextDecoder('big5').decode(e.target.result)}catch(_){}}
-      wb=XLSX.read(txt,{type:'string',raw:true})}
-    else wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
-    pending={file:f.name,wb};let best=wb.SheetNames[0],bs=-1;
-    wb.SheetNames.forEach(n=>{readSheet(n);const s=Object.keys(pending.map).length;if(s>bs){bs=s;best=n}});
-    readSheet(best);openMap();
-  }catch(err){toast(l.readFail+err.message)}};
-  rd.readAsArrayBuffer(f);
-}
-function useBuiltIn(){
-  if(!BUILTIN){DB={items:[],meta:null,builtIn:true};return}
-  const rows=BUILTIN.rows,hr=guessHeaderRow(rows),map=fixMap(rows,hr,guessMap((rows[hr]||[]).map(cellStr)));
-  const items=buildItems(rows,hr,map,0);prep(items);
-  DB={items,meta:{file:BUILTIN.file},builtIn:true};
-  if(BUILTIN.currency&&!lsGet(LS+'.pref')?.curSet)pref.cur=BUILTIN.currency;
-}
-
-/* ================= events ================= */
-document.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{pref.lang=b.dataset.lang;lsSet(LS+'.pref',pref);applyLang()});
-document.querySelectorAll('[data-tag]').forEach(b=>b.onclick=()=>{state.tag=state.tag===b.dataset.tag?'':b.dataset.tag;
-  document.querySelectorAll('[data-tag]').forEach(x=>x.classList.toggle('on',x.dataset.tag===state.tag));state.page=1;render()});
-$('file').onchange=e=>{handleFile(e.target.files[0]);e.target.value=''};
-$('mapCancel').onclick=()=>{$('mapModal').classList.remove('open');pending=null};
-$('mapOk').onclick=doImport;
-$('btnMenu').onclick=()=>{refreshInfo();$('mCur').value=pref.cur;$('menuModal').classList.add('open')};
-$('mClose').onclick=()=>$('menuModal').classList.remove('open');
-$('mImport').onclick=()=>{$('menuModal').classList.remove('open');$('file').click()};
-$('mCur').onchange=e=>{pref.cur=e.target.value;pref.curSet=true;lsSet(LS+'.pref',pref);render()};
-function backToBuiltIn(msg){lsDel(LS+'.data');useBuiltIn();state.counter='';state.page=1;state.open.clear();
-  $('menuModal').classList.remove('open');refreshSelects();refreshInfo();render();toast(msg)}
-$('mDefault').onclick=()=>backToBuiltIn(L().restored);
-$('mClear').onclick=e=>{const b=e.currentTarget;
-  if(!b.dataset.confirm){b.dataset.confirm='1';b.textContent=L().confirmClear;setTimeout(()=>{delete b.dataset.confirm;b.textContent=L().mClear},3000);return}
-  delete b.dataset.confirm;b.textContent=L().mClear;backToBuiltIn(L().cleared)};
-document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
-$('list').addEventListener('click',e=>{
-  if(e.target.closest('a'))return;
-  const a=e.target.closest('[data-act]');if(a){$('file').click();return}
-  const card=e.target.closest('.item');if(!card)return;const i=+card.dataset.i;
-  state.open.has(i)?state.open.delete(i):state.open.add(i);card.classList.toggle('open');
-  const det=card.querySelector('.detail');if(state.open.has(i)&&!det.querySelector('.big')){const it=DB.items[i];if(it)det.insertAdjacentHTML('beforeend',imgTag(it,'big'))}
-});
-$('pager').addEventListener('click',e=>{const b=e.target.closest('[data-pg]');if(!b||b.disabled)return;state.page=+b.dataset.pg;render();window.scrollTo({top:0,behavior:'smooth'})});
-$('searchForm').onsubmit=e=>{e.preventDefault();state.q=$('q').value;state.page=1;render();$('q').blur()};
-let tmr;$('q').addEventListener('input',()=>{clearTimeout(tmr);tmr=setTimeout(()=>{state.q=$('q').value;state.page=1;render()},250)});
-$('fCounter').onchange=e=>{state.counter=e.target.value;state.page=1;render()};
-$('fStock').onchange=e=>{state.onlyStock=e.target.checked;state.page=1;render()};
-$('fSize').onchange=e=>{state.size=+e.target.value;state.page=1;render()};
-$('fSort').onchange=e=>{state.sort=e.target.value;state.page=1;render()};
-document.addEventListener('dragover',e=>e.preventDefault());
-document.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)handleFile(f)});
-
-/* ================= init ================= */
-/* ================= encrypted built-in data ================= */
-let ENC=null;const KEYLS=LS+'.key';
-const b64d=b=>Uint8Array.from(atob(b),c=>c.charCodeAt(0));
-const b64e=u=>btoa(String.fromCharCode(...new Uint8Array(u)));
-async function deriveKey(pw){
-  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
-  return crypto.subtle.deriveKey({name:'PBKDF2',salt:b64d(ENC.salt),iterations:ENC.iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},true,['decrypt']);
-}
-async function decryptWith(key){
-  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64d(ENC.iv)},key,b64d(ENC.ct));
-  return JSON.parse(new TextDecoder().decode(pt));
-}
-async function tryStoredKey(){
-  const k=lsGet(KEYLS);if(!k||k.salt!==ENC.salt)return false;
-  try{const key=await crypto.subtle.importKey('raw',b64d(k.key),{name:'AES-GCM'},true,['decrypt']);BUILTIN=await decryptWith(key);return true}
-  catch(e){lsDel(KEYLS);return false}
-}
-function showLock(){$('lock').classList.add('open');$('pwErr').textContent='';setTimeout(()=>$('pw').focus(),50)}
-$('lockForm').onsubmit=async e=>{
-  e.preventDefault();const btn=e.submitter||$('lockForm').querySelector('button[type=submit]');
-  if(!window.crypto||!crypto.subtle){$('pwErr').textContent=L().pwNoCrypto;return}
-  btn.disabled=true;
-  try{const key=await deriveKey($('pw').value);BUILTIN=await decryptWith(key);
-    if($('pwRemember').checked)lsSet(KEYLS,{salt:ENC.salt,key:b64e(await crypto.subtle.exportKey('raw',key))});
-    $('pw').value='';$('lock').classList.remove('open');startData();
-  }catch(err){$('pwErr').textContent=L().pwWrong;$('pw').select()}
-  btn.disabled=false;
+$('torch').onclick=async()=>{
+  try{const tr=stream.getVideoTracks()[0];torchOn=!torchOn;await tr.applyConstraints({advanced:[{torch:torchOn}]});$('torch').setAttribute('aria-pressed',String(torchOn))}catch(e){torchOn=false}
 };
-$('mLock').onclick=()=>{lsDel(KEYLS);location.reload()};
-function startData(){
-  const saved=lsGet(LS+'.data');
-  if(saved&&Array.isArray(saved.items)&&saved.items.length){DB=saved;DB.items.forEach(it=>{it.tags=it.tags||[];it.sources=it.sources||[];it.statuses=it.statuses||[]});prep(DB.items)}
-  else useBuiltIn();
-  applyLang();
-}
-(async function init(){
-  const p=lsGet(LS+'.pref');if(p)pref={...pref,...p};
-  applyLang();
-  try{const r=await fetch('data.enc.json',{cache:'no-cache'});if(r.ok)ENC=await r.json()}catch(e){}
-  if(ENC){
-    $('mLock').style.display='';
-    if(window.crypto&&crypto.subtle&&await tryStoredKey()){startData();return}
-    showLock();return;
+async function initDecoder(){
+  detector=null;
+  if('BarcodeDetector' in window){
+    try{const f=await BarcodeDetector.getSupportedFormats();if(f.includes('ean_13'))detector=new BarcodeDetector({formats:['ean_13','upc_a','ean_8','upc_e'].filter(x=>f.includes(x))})}catch(e){}
   }
-  try{const r=await fetch('data.json',{cache:'no-cache'});if(r.ok)BUILTIN=await r.json()}catch(e){}
-  startData();
+  if(!detector&&!zx){
+    for(let i=0;i<50&&!window.ZXing;i++)await new Promise(r=>setTimeout(r,100));
+    if(window.ZXing){
+      const h=new Map();h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.EAN_8]);h.set(ZXing.DecodeHintType.TRY_HARDER,true);
+      const r=new ZXing.MultiFormatReader();r.setHints(h);zx=r;
+    }
+  }
+}
+const cvs=document.createElement('canvas');const ctx=cvs.getContext('2d',{willReadFrequently:true});
+let attempt=0;
+function grabCrop(){
+  const v=$('video');const vw=v.videoWidth,vh=v.videoHeight;if(!vw||!vh)return null;
+  // map the on-screen frame to video pixels (video is object-fit: cover)
+  const box=v.getBoundingClientRect(),fr=$('frame').getBoundingClientRect();
+  const scale=Math.max(box.width/vw,box.height/vh);const ox=(vw*scale-box.width)/2,oy=(vh*scale-box.height)/2;
+  let sx=(fr.left-box.left+ox)/scale,sy=(fr.top-box.top+oy)/scale,sw=fr.width/scale,sh=fr.height/scale;
+  // add margin around the frame so slightly misaligned barcodes still read
+  const mx=sw*.15,my=sh*.35;sx=Math.max(0,sx-mx);sy=Math.max(0,sy-my);sw=Math.min(vw-sx,sw+2*mx);sh=Math.min(vh-sy,sh+2*my);
+  // every 3rd try read the whole picture, in case the barcode is not inside the frame
+  if(++attempt%3===0){sx=0;sy=0;sw=vw;sh=vh}
+  // whole pixels only: fractional source coordinates blur the bars and break decoding
+  sx=Math.round(sx);sy=Math.round(sy);sw=Math.round(Math.min(sw,vw-sx));sh=Math.round(Math.min(sh,vh-sy));
+  const tw=Math.min(1280,sw),th=Math.round(sh*tw/sw);
+  cvs.width=tw;cvs.height=th;ctx.drawImage(v,sx,sy,sw,sh,0,0,tw,th);return cvs;
+}
+async function decodeOnce(){
+  const c=grabCrop();if(!c)return null;
+  if(detector){try{const r=await detector.detect(c);if(r&&r.length)return r[0].rawValue}catch(e){}return null}
+  if(zx){try{const src=new ZXing.HTMLCanvasElementLuminanceSource(c);const bmp=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));return zx.decodeWithState(bmp).getText()}catch(e){}finally{try{zx.reset()}catch(e){}}}
+  return null;
+}
+async function loop(){
+  if(!stream||$('scan').hidden)return;
+  if(!busy){
+    busy=true;
+    const raw=await decodeOnce();busy=false;
+    if(raw){const code=normCode(raw);
+      if(codeValid(code)){
+        const need=detector?1:2; // ZXing: confirm with a second identical read
+        if(code===lastCode)lastCount++;else{lastCode=code;lastCount=1}
+        if(lastCount>=need){stopCamera();lookup(code);return}
+      }
+    }
+  }
+  scanTimer=setTimeout(loop,detector?120:90);
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&stream)stopCamera();else if(!document.hidden&&!$('scan').hidden&&!stream)startScan()});
+
+/* ---------- manual entry ---------- */
+function resetManual(){$('code').value='';updateCounter();$('codeErr').hidden=true;$('code').className=''}
+function updateCounter(){
+  const d=$('code').value.replace(/\D/g,'');const n=d.length;const c=$('counter');
+  $('code').classList.remove('err');$('codeErr').hidden=true;
+  if(n===13){c.className='counter ok';c.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg> 13 / 13 digits';$('code').className='ok'}
+  else{c.className='counter';c.textContent=`${n} / 13 digits`+(n>13?' – too many':'');$('code').className=''}
+  $('checkBtn').disabled=n<8;
+}
+$('code').addEventListener('input',()=>{const d=$('code').value.replace(/\D/g,'');if(d!==$('code').value)$('code').value=d;updateCounter()});
+function showErr(html){$('code').className='err';$('codeErr').innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink:0"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/></svg><div>'+html+'</div>';$('codeErr').hidden=false;const c=$('counter');c.className='counter err';c.textContent=$('code').value.replace(/\D/g,'').length+' / 13 digits'}
+async function submitManual(){
+  const d=$('code').value.replace(/\D/g,'');
+  if(!PRICES){$('loading').hidden=false;try{await loadPromise}catch(e){}$('loading').hidden=true}
+  if(PRICES&&PRICES.has(d)){$('code').blur();lookup(d);return}   // listed codes always open, even unusual ones
+  if(d.length===8&&ean8Valid(d)){$('code').blur();lookup(d);return}
+  if(d.length<13){showErr(`<strong>A barcode has 13 digits.</strong> You typed ${d.length}. Include the small digit on the far left of the barcode.`);return}
+  if(d.length>13){showErr('<strong>Too many digits.</strong> A barcode has 13 digits – please check and try again.');return}
+  if(!eanValid(d)){showErr("<strong>This number doesn't look right.</strong> One digit may be mistyped. Please check all 13 digits against the barcode.");return}
+  $('code').blur();lookup(d);
+}
+$('checkBtn').onclick=submitManual;
+$('manualForm').onsubmit=e=>{e.preventDefault();submitManual()};
+
+/* ---------- help illustration: real EAN-13 bars ---------- */
+(function drawHelp(){
+  const code='4712926896570',L=['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'];
+  const R=L.map(x=>x.replace(/./g,c=>c==='0'?'1':'0')),G=R.map(x=>x.split('').reverse().join(''));
+  const P=['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
+  const d=code.split('').map(Number),p=P[d[0]];
+  const bits='101'+[1,2,3,4,5,6].map((k,i)=>(p[i]==='L'?L:G)[d[k]]).join('')+'01010'+[7,8,9,10,11,12].map(k=>R[d[k]]).join('')+'101';
+  const m=2.5,left=14,h=62,W=left+95*m+10,guard=i=>i<3||(i>=45&&i<50)||i>=92;
+  let r='';for(let i=0;i<95;){if(bits[i]==='1'){let j=i;while(j<95&&bits[j]==='1'&&guard(j)===guard(i))j++;r+=`<rect x="${left+i*m}" y="6" width="${(j-i)*m}" height="${guard(i)?h+8:h}" fill="#16151A"/>`;i=j}else i++}
+  const ty=h+24,t=(x,s,ls)=>`<text x="${x}" y="${ty}" font-size="15" text-anchor="${ls?'middle':'end'}" ${ls?'letter-spacing="2.4"':''} font-family="Inter,Arial,sans-serif" fill="#16151A">${s}</text>`;
+  $('helpBarcode').innerHTML=`<svg width="${W}" height="${h+34}" viewBox="0 0 ${W} ${h+34}" role="img" aria-label="Example barcode. The 13 digits printed under the bars are highlighted.">${r}${t(left-4,code[0])}${t(left+24*m,code.slice(1,7),1)}${t(left+71*m,code.slice(7),1)}<rect x="1" y="${h+7}" width="${W-4}" height="24" rx="7" fill="none" stroke="#E8921A" stroke-width="2.5"/></svg>`;
 })();
 })();
 </script>

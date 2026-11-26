@@ -8,38 +8,126 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{margin:0;background:#f5f4f0;color:#1d1d1b;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;font-size:15px;line-height:1.5}
-.box{max-width:520px;margin:30px auto;background:#fff;border:1px solid #e3e1da;border-radius:14px;padding:22px}
+.box{max-width:540px;margin:30px auto;background:#fff;border:1px solid #e3e1da;border-radius:14px;padding:22px}
 h1{font-size:19px;margin:0 0 6px}
 label{display:block;margin-top:14px;font-weight:600;font-size:14px}
 input,select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #d8d6ce;border-radius:9px;font:inherit;margin-top:4px}
 button{margin-top:18px;width:100%;padding:12px;border:0;border-radius:10px;background:#c2410c;color:#fff;font:inherit;font-weight:600;cursor:pointer}
 button:disabled{opacity:.5}
 .hint{font-size:12.5px;color:#6b6a65}
-.msg{margin-top:12px;font-size:14px}
+.msg{margin-top:12px;font-size:14px;white-space:pre-line}
 .ok{color:#15803d}.err{color:#b91c1c}
 ol{padding-left:20px;font-size:14px}
+code{background:#f1efe9;padding:1px 5px;border-radius:4px}
 </style>
 </head>
 <body>
 <div class="box">
-  <h1>商品清單加密工具</h1>
-  <div class="hint">把新的商品清單 Excel 加密成 <b>data.enc.json</b>，再上傳到 GitHub 取代舊檔即可。檔案只在你的瀏覽器裡處理，不會上傳到任何地方。</div>
+  <h1>商品清單更新工具</h1>
+  <div class="hint">選擇新的商品清單 Excel，一次產生兩個檔案：員工查詢頁用的 <b>data.enc.json</b>（加密）與消費者查價頁用的 <b>prices.json</b>（只含條碼、品名、售價）。檔案只在你的瀏覽器裡處理，不會上傳到任何地方。</div>
   <label>1. 商品清單（.xlsx / .xls / .csv）<input type="file" id="f" accept=".xlsx,.xls,.csv"></label>
   <label>工作表<select id="sheet" disabled></select></label>
   <label>2. 幣別<select id="cur"><option>SGD</option><option>RM</option><option>NT$</option><option>HK$</option><option>$</option></select></label>
-  <label>3. 活動密碼<input type="password" id="pw1" autocomplete="new-password" placeholder="至少 8 個字元"></label>
+  <label>3. 員工頁密碼<input type="password" id="pw1" autocomplete="new-password" placeholder="至少 8 個字元"></label>
   <label>再輸入一次<input type="password" id="pw2" autocomplete="new-password"></label>
-  <button id="go" disabled>產生 data.enc.json</button>
+  <button id="go" disabled>產生 data.enc.json ＋ prices.json</button>
   <div class="msg" id="msg"></div>
   <ol class="hint" style="margin-top:16px">
-    <li>下載的 data.enc.json 上傳到 GitHub repo，覆蓋舊檔（Add file → Upload files）。</li>
-    <li>約 1 分鐘後網站更新。換了密碼的話，所有同仁下次開啟時要輸入新密碼。</li>
+    <li>會下載兩個檔案。<code>data.enc.json</code> 上傳到 repo 最外層；<code>prices.json</code> 上傳到 <code>price</code> 資料夾，都覆蓋舊檔。</li>
+    <li>約 1 分鐘後兩個網頁同時更新。員工頁若換了密碼，所有同仁下次開啟要輸入新密碼。</li>
     <li>請確認 repo 裡沒有未加密的 data.json 或原始 Excel。</li>
   </ol>
 </div>
 <script>
+const FIELDS=[
+  {key:'barcode',zh:'條碼',en:'Barcode',req:true,alias:['barcode','條碼','國際條碼','商品條碼','ean','jan']},
+  {key:'code',zh:'品號',en:'Item code',alias:['品號','貨號','商品編號','料號','sku']},
+  {key:'nameEn',zh:'英文品名',en:'English name',alias:['product name','英文品名','english name','name(en)','name']},
+  {key:'nameZh',zh:'中文品名',en:'Chinese name',alias:['中文品名','品名','商品名稱','商品名','名稱']},
+  {key:'counter',zh:'櫃號',en:'Box no.',req:true,alias:['櫃號','box label','box lable','櫃位編號','counter','櫃位']},
+  {key:'series',zh:'作品',en:'Series',alias:['作品','作品名','系列','ip','櫃位']},
+  {key:'zone',zh:'櫃位/區域',en:'Zone',alias:['櫃位','區域','zone','area']},
+  {key:'price',zh:'售價',en:'Price',req:true,alias:['售價','售价','定價','單價','rsp','price','價格']},
+  {key:'stock',zh:'期初庫存',en:'Opening stock',req:true,alias:['期初庫存','期初','order qty','總計','總數','庫存','數量','qty','stock']},
+  {key:'special',zh:'特價',en:'Sale price',alias:['最後現場售價','現場售價','特價','特价','優惠價','final price','sale price','promo price']},
+  {key:'status',zh:'狀態',en:'Status',alias:['status','活動','狀態','備註','note']},
+  {key:'gwp',zh:'滿額贈門檻',en:'GWP threshold',alias:['gwp','滿額贈']},
+  {key:'bag',zh:'福袋數量',en:'Lucky-bag count',alias:['package paper','paper bag','福袋數','福袋']},
+  {key:'image',zh:'圖片連結',en:'Photo link',alias:['圖片連結','圖片','image','photo','img']}
+];
+const norm=s=>String(s??'').toLowerCase().normalize('NFKC').replace(/\s+/g,'');
+
+function toNum(v){if(v===null||v===undefined||v==='')return null;if(typeof v==='number')return v;
+  const s=String(v).replace(/[^\d.\-]/g,'');if(!s)return null;const n=parseFloat(s);return isNaN(n)?null:n}
+function cellStr(v){if(v===null||v===undefined)return'';if(v instanceof Date)return v.toISOString().slice(0,10);
+  const s=unent(String(v).trim());return /^(#N\/A|#REF!|#VALUE!|nothing|n\/a|null)$/i.test(s)?'':s}
+const unent=s=>String(s).replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+function parseStatus(s){
+  const r={tags:new Set(),pct:null,src:null};if(!s)return r;
+  const m=s.match(/特[價价]\s*(\d+)\s*折/);
+  if(m){r.tags.add('sale');const d=m[1];r.pct=d.length===1?+d*10:+d}
+  if(/福袋|goodies|lucky/i.test(s))r.tags.add('bag');
+  if(/滿額贈|满额赠|gwp/i.test(s))r.tags.add('gwp');
+  if(/吉隆坡|warehouse stock/i.test(s))r.src='kl';
+  else if(/already packed|台[湾灣]/i.test(s))r.src='tw';
+  else if(/上海/i.test(s))r.src='sh';
+  return r;
+}
+
+function guessHeaderRow(rows){
+  let best=0,bs=-1;
+  for(let r=0;r<Math.min(rows.length,15);r++){const m=guessMap((rows[r]||[]).map(cellStr));const s=Object.keys(m).length;if(s>bs){bs=s;best=r}}
+  return best;
+}
+function guessMap(headers){
+  const h=headers.map(norm),used=new Set(),map={};
+  FIELDS.forEach(f=>{
+    for(const a of f.alias){const na=norm(a);
+      let i=h.findIndex((c,i)=>c&&!used.has(i)&&c===na);
+      if(i<0&&na.length>1)i=h.findIndex((c,i)=>c&&!used.has(i)&&c.includes(na));
+      if(i>=0){map[f.key]=i;used.add(i);break}}
+  });
+  return map;
+}
+/* if barcode / item-code headers are swapped in the sheet, swap them back by looking at the data */
+function fixMap(rows,headerRow,map){
+  if(map.barcode===undefined||map.code===undefined)return map;
+  const isBc=v=>/^\d{8,14}$/.test(cellStr(v));let a=0,b=0,n=0;
+  for(let r=headerRow+1;r<rows.length&&n<50;r++){const row=rows[r]||[];if(!row.length)continue;n++;
+    if(isBc(row[map.barcode]))a++;if(isBc(row[map.code]))b++}
+  if(b>a){const t=map.barcode;map.barcode=map.code;map.code=t}
+  return map;
+}
 const $=id=>document.getElementById(id);let wb=null,fname='';
 const b64=u=>{let s='';const a=new Uint8Array(u);for(let i=0;i<a.length;i+=8192)s+=String.fromCharCode(...a.subarray(i,i+8192));return btoa(s)};
+function eanValid(c){if(!/^\d{13}$/.test(c))return false;let s=0;for(let i=0;i<12;i++)s+=(+c[i])*(i%2?3:1);return (10-s%10)%10===+c[12]}
+function ean8Valid(c){if(!/^\d{8}$/.test(c))return false;let s=0;for(let i=0;i<7;i++)s+=(+c[i])*(i%2?1:3);return (10-s%10)%10===+c[7]}
+function save(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+/* consumer price list: barcode, names, price, final price, tag, photo — nothing internal */
+function buildPrices(rows,cur){
+  const hr=guessHeaderRow(rows),map=fixMap(rows,hr,guessMap((rows[hr]||[]).map(cellStr)));
+  const need=['barcode','price'].filter(k=>map[k]===undefined);
+  if(map.nameZh===undefined&&map.nameEn===undefined)need.push('品名');
+  if(need.length)throw new Error('找不到必要欄位：'+need.join('、'));
+  const get=(row,k)=>map[k]===undefined?'':row[map[k]];
+  const out=new Map();let bad=0;
+  for(let r=hr+1;r<rows.length;r++){
+    const row=rows[r]||[];let b=cellStr(get(row,'barcode')).replace(/\s/g,'');if(!b)continue;
+    if(/^\d{12}$/.test(b))b='0'+b;
+    if(out.has(b))continue;
+    const p=toNum(get(row,'price'));if(p===null)continue;
+    let f=toNum(get(row,'special'));if(f===null||!(f<p)||f<=0)f=null;
+    const st=parseStatus(cellStr(get(row,'status')));
+    const img=cellStr(get(row,'image'));
+    const it={b,en:cellStr(get(row,'nameEn')),zh:cellStr(get(row,'nameZh')),p};
+    if(f!==null){it.f=f;if(st.pct)it.o=100-st.pct}  // official discount, e.g. 8折 → 20% OFF
+    if(st.tags.has('gwp')||toNum(get(row,'gwp')))it.t='gwp';else if(st.tags.has('bag'))it.t='bag';
+    if(/^https?:\/\//i.test(img))it.img=img;
+    if(!eanValid(b)&&!ean8Valid(b))bad++;
+    out.set(b,it);
+  }
+  return {items:[...out.values()],bad,cur};
+}
 function check(){$('go').disabled=!(wb&&$('pw1').value.length>=8&&$('pw1').value===$('pw2').value)}
 ['pw1','pw2'].forEach(i=>$(i).oninput=check);
 $('f').onchange=e=>{const f=e.target.files[0];if(!f)return;fname=f.name;const r=new FileReader();
@@ -51,20 +139,24 @@ $('f').onchange=e=>{const f=e.target.files[0];if(!f)return;fname=f.name;const r=
   }catch(err){$('msg').className='msg err';$('msg').textContent='無法讀取檔案：'+err.message}};
   r.readAsArrayBuffer(f)};
 $('go').onclick=async()=>{
-  $('go').disabled=true;$('msg').className='msg';$('msg').textContent='加密中…';
+  $('go').disabled=true;$('msg').className='msg';$('msg').textContent='處理中…';
   try{
     const name=$('sheet').value||wb.SheetNames[0];
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:''})
       .map(r=>r.map(v=>v instanceof Date?v.toISOString().slice(0,10):v));
-    const plain=new TextEncoder().encode(JSON.stringify({file:fname,sheet:name,currency:$('cur').value,rows}));
+    const cur=$('cur').value;
+    const pr=buildPrices(rows,cur);
+    const plain=new TextEncoder().encode(JSON.stringify({file:fname,sheet:name,currency:cur,rows}));
     const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=250000;
     const base=await crypto.subtle.importKey('raw',new TextEncoder().encode($('pw1').value),'PBKDF2',false,['deriveKey']);
     const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt']);
     const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,plain);
-    const out=JSON.stringify({v:1,kdf:'PBKDF2-SHA256',iter,salt:b64(salt),iv:b64(iv),ct:b64(ct)});
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'application/json'}));a.download='data.enc.json';a.click();
-    $('msg').className='msg ok';$('msg').textContent=`完成：${rows.length-1} 列資料已加密並下載 data.enc.json`;
-  }catch(err){$('msg').className='msg err';$('msg').textContent='加密失敗：'+err.message}
+    save('data.enc.json',JSON.stringify({v:1,kdf:'PBKDF2-SHA256',iter,salt:b64(salt),iv:b64(iv),ct:b64(ct)}));
+    await new Promise(r=>setTimeout(r,400));
+    save('prices.json',JSON.stringify({currency:cur,updated:new Date().toISOString().slice(0,10),items:pr.items}));
+    $('msg').className='msg ok';
+    $('msg').textContent=`完成：已下載 data.enc.json 與 prices.json（消費者頁 ${pr.items.length} 個商品）`+(pr.bad?`\n⚠ 有 ${pr.bad} 個條碼不是標準 EAN-13 / EAN-8（例如含英文字母），客人掃不到也無法輸入，請檢查清單。`:'');
+  }catch(err){$('msg').className='msg err';$('msg').textContent='處理失敗：'+err.message}
   check();
 };
 </script>
