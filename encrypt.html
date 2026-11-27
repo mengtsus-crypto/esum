@@ -47,9 +47,9 @@ const FIELDS=[
   {key:'counter',zh:'櫃號',en:'Box no.',req:true,alias:['櫃號','box label','box lable','櫃位編號','counter','櫃位']},
   {key:'series',zh:'作品',en:'Series',alias:['作品','作品名','系列','ip','櫃位']},
   {key:'zone',zh:'櫃位/區域',en:'Zone',alias:['櫃位','區域','zone','area']},
-  {key:'price',zh:'售價',en:'Price',req:true,alias:['售價','售价','定價','單價','rsp','price','價格']},
-  {key:'stock',zh:'期初庫存',en:'Opening stock',req:true,alias:['期初庫存','期初','order qty','總計','總數','庫存','數量','qty','stock']},
-  {key:'special',zh:'特價',en:'Sale price',alias:['最後現場售價','現場售價','特價','特价','優惠價','final price','sale price','promo price']},
+  {key:'price',zh:'售價',en:'Price',req:true,ex:/ntd|twd|台幣|成本|cost|金額|amount/,alias:['sg售價','售價','售价','定價','單價','rsp','price','價格']},
+  {key:'stock',zh:'期初庫存',en:'Opening stock',req:true,ex:/成本|金額|cost|amount/,alias:['期初庫存','期初','order qty','總計','總數','庫存','數量','qty','stock']},
+  {key:'special',zh:'特價',en:'Sale price',ex:/ntd|twd|台幣|成本|cost|金額|amount/,alias:['最後現場售價','現場售價','特價','特价','優惠價','final price','sale price','promo price']},
   {key:'status',zh:'狀態',en:'Status',alias:['status','活動','狀態','備註','note']},
   {key:'gwp',zh:'滿額贈門檻',en:'GWP threshold',alias:['gwp','滿額贈']},
   {key:'bag',zh:'福袋數量',en:'Lucky-bag count',alias:['package paper','paper bag','福袋數','福袋']},
@@ -83,8 +83,9 @@ function guessMap(headers){
   const h=headers.map(norm),used=new Set(),map={};
   FIELDS.forEach(f=>{
     for(const a of f.alias){const na=norm(a);
-      let i=h.findIndex((c,i)=>c&&!used.has(i)&&c===na);
-      if(i<0&&na.length>1)i=h.findIndex((c,i)=>c&&!used.has(i)&&c.includes(na));
+      const okCol=(c,i)=>c&&!used.has(i)&&!(f.ex&&f.ex.test(c)); // skip NTD price / cost columns
+      let i=h.findIndex((c,i)=>okCol(c,i)&&c===na);
+      if(i<0&&na.length>1)i=h.findIndex((c,i)=>okCol(c,i)&&c.includes(na));
       if(i>=0){map[f.key]=i;used.add(i);break}}
   });
   return map;
@@ -102,7 +103,8 @@ const $=id=>document.getElementById(id);let wb=null,fname='';
 const b64=u=>{let s='';const a=new Uint8Array(u);for(let i=0;i<a.length;i+=8192)s+=String.fromCharCode(...a.subarray(i,i+8192));return btoa(s)};
 function eanValid(c){if(!/^\d{13}$/.test(c))return false;let s=0;for(let i=0;i<12;i++)s+=(+c[i])*(i%2?3:1);return (10-s%10)%10===+c[12]}
 function ean8Valid(c){if(!/^\d{8}$/.test(c))return false;let s=0;for(let i=0;i<7;i++)s+=(+c[i])*(i%2?1:3);return (10-s%10)%10===+c[7]}
-function save(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+const LINKS={};
+function save(name,text){const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));LINKS[name]=url;const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove()}
 /* consumer price list: barcode, names, price, final price, tag, photo — nothing internal */
 function buildPrices(rows,cur){
   const hr=guessHeaderRow(rows),map=fixMap(rows,hr,guessMap((rows[hr]||[]).map(cellStr)));
@@ -115,8 +117,10 @@ function buildPrices(rows,cur){
     const row=rows[r]||[];let b=cellStr(get(row,'barcode')).replace(/\s/g,'');if(!b)continue;
     if(/^\d{12}$/.test(b))b='0'+b;
     if(out.has(b))continue;
-    const p=toNum(get(row,'price'));if(p===null)continue;
-    let f=toNum(get(row,'special'));if(f===null||!(f<p)||f<=0)f=null;
+    let p=toNum(get(row,'price'));if(p===null)continue;
+    let f=toNum(get(row,'special'));
+    if(f!==null&&f>0&&f>p){p=f;f=null}            // final on-site price is higher: it is the price
+    if(f===null||!(f<p)||f<=0)f=null;
     const st=parseStatus(cellStr(get(row,'status')));
     const img=cellStr(get(row,'image'));
     const it={b,en:cellStr(get(row,'nameEn')),zh:cellStr(get(row,'nameZh')),p};
@@ -127,6 +131,16 @@ function buildPrices(rows,cur){
     out.set(b,it);
   }
   return {items:[...out.values()],bad,cur};
+}
+const STD={barcode:'條碼 Barcode',code:'品號 Item Code',nameZh:'中文品名 Chinese Name',nameEn:'英文品名 English Name',counter:'櫃號 Box No.',
+  zone:'區域 Zone',series:'作品 Series',price:'售價 Price',special:'現場售價 Final Price',stock:'期初庫存 Opening Stock',status:'活動 Promotion',
+  gwp:'滿額贈門檻 GWP Threshold',bag:'福袋數量 Lucky Bag Qty',image:'圖片連結 Image URL'};
+function slimRows(rows){
+  const hr=guessHeaderRow(rows),map=fixMap(rows,hr,guessMap((rows[hr]||[]).map(cellStr)));
+  const keys=Object.keys(STD).filter(k=>map[k]!==undefined);
+  const out=[keys.map(k=>STD[k])];
+  for(let r=hr+1;r<rows.length;r++){const row=rows[r]||[];const v=keys.map(k=>row[map[k]]);if(v.some(x=>x!==''&&x!=null))out.push(v)}
+  return {rows:out,keys};
 }
 function check(){$('go').disabled=!(wb&&$('pw1').value.length>=8&&$('pw1').value===$('pw2').value)}
 ['pw1','pw2'].forEach(i=>$(i).oninput=check);
@@ -146,7 +160,8 @@ $('go').onclick=async()=>{
       .map(r=>r.map(v=>v instanceof Date?v.toISOString().slice(0,10):v));
     const cur=$('cur').value;
     const pr=buildPrices(rows,cur);
-    const plain=new TextEncoder().encode(JSON.stringify({file:fname,sheet:name,currency:cur,rows}));
+    const slim=slimRows(rows);
+    const plain=new TextEncoder().encode(JSON.stringify({file:fname,sheet:name,currency:cur,rows:slim.rows}));
     const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=250000;
     const base=await crypto.subtle.importKey('raw',new TextEncoder().encode($('pw1').value),'PBKDF2',false,['deriveKey']);
     const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt']);
@@ -154,8 +169,15 @@ $('go').onclick=async()=>{
     save('data.enc.json',JSON.stringify({v:1,kdf:'PBKDF2-SHA256',iter,salt:b64(salt),iv:b64(iv),ct:b64(ct)}));
     await new Promise(r=>setTimeout(r,400));
     save('prices.json',JSON.stringify({currency:cur,updated:new Date().toISOString().slice(0,10),items:pr.items}));
+    const priceCol=(slim.keys.includes('price')?'':'⚠ 找不到售價欄！');
     $('msg').className='msg ok';
-    $('msg').textContent=`完成：已下載 data.enc.json 與 prices.json（消費者頁 ${pr.items.length} 個商品）`+(pr.bad?`\n⚠ 有 ${pr.bad} 個條碼不是標準 EAN-13 / EAN-8（例如含英文字母），客人掃不到也無法輸入，請檢查清單。`:'');
+    $('msg').textContent=`完成：員工頁 ${slim.rows.length-1} 列、消費者頁 ${pr.items.length} 個商品。${priceCol}`+(pr.bad?`\n⚠ 有 ${pr.bad} 個條碼不是標準 EAN-13 / EAN-8（例如含英文字母），客人掃不到也無法輸入，請檢查清單。`:'');
+    const box=document.createElement('div');box.style.cssText='margin-top:10px;display:flex;flex-direction:column;gap:6px;color:#1d1d1b';
+    box.innerHTML='<span>若沒有自動下載兩個檔案，請直接點：</span>';
+    ['data.enc.json','prices.json'].forEach(n=>{const a=document.createElement('a');a.href=LINKS[n];a.download=n;a.textContent='⬇ 下載 '+n;a.style.cssText='font-weight:600;color:#c2410c';box.appendChild(a)});
+    $('msg').appendChild(box);
+    const ex=pr.items.slice(0,3).map(i=>`${i.zh||i.en}：售價 ${i.p}${i.f!=null?'、現場 '+i.f:''}`).join('\n');
+    const pv=document.createElement('div');pv.style.cssText='margin-top:10px;font-size:13px;color:#6b6a65';pv.textContent='請核對前 3 筆售價是否正確：\n'+ex;$('msg').appendChild(pv);
   }catch(err){$('msg').className='msg err';$('msg').textContent='處理失敗：'+err.message}
   check();
 };

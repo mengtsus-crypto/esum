@@ -292,9 +292,9 @@ const FIELDS=[
   {key:'counter',zh:'櫃號',en:'Box no.',req:true,alias:['櫃號','box label','box lable','櫃位編號','counter','櫃位']},
   {key:'series',zh:'作品',en:'Series',alias:['作品','作品名','系列','ip','櫃位']},
   {key:'zone',zh:'櫃位/區域',en:'Zone',alias:['櫃位','區域','zone','area']},
-  {key:'price',zh:'售價',en:'Price',req:true,alias:['售價','售价','定價','單價','rsp','price','價格']},
-  {key:'stock',zh:'期初庫存',en:'Opening stock',req:true,alias:['期初庫存','期初','order qty','總計','總數','庫存','數量','qty','stock']},
-  {key:'special',zh:'特價',en:'Sale price',alias:['最後現場售價','現場售價','特價','特价','優惠價','final price','sale price','promo price']},
+  {key:'price',zh:'售價',en:'Price',req:true,ex:/ntd|twd|台幣|成本|cost|金額|amount/,alias:['sg售價','售價','售价','定價','單價','rsp','price','價格']},
+  {key:'stock',zh:'期初庫存',en:'Opening stock',req:true,ex:/成本|金額|cost|amount/,alias:['期初庫存','期初','order qty','總計','總數','庫存','數量','qty','stock']},
+  {key:'special',zh:'特價',en:'Sale price',ex:/ntd|twd|台幣|成本|cost|金額|amount/,alias:['最後現場售價','現場售價','特價','特价','優惠價','final price','sale price','promo price']},
   {key:'status',zh:'狀態',en:'Status',alias:['status','活動','狀態','備註','note']},
   {key:'gwp',zh:'滿額贈門檻',en:'GWP threshold',alias:['gwp','滿額贈']},
   {key:'bag',zh:'福袋數量',en:'Lucky-bag count',alias:['package paper','paper bag','福袋數','福袋']},
@@ -383,8 +383,9 @@ function guessMap(headers){
   const h=headers.map(norm),used=new Set(),map={};
   FIELDS.forEach(f=>{
     for(const a of f.alias){const na=norm(a);
-      let i=h.findIndex((c,i)=>c&&!used.has(i)&&c===na);
-      if(i<0&&na.length>1)i=h.findIndex((c,i)=>c&&!used.has(i)&&c.includes(na));
+      const okCol=(c,i)=>c&&!used.has(i)&&!(f.ex&&f.ex.test(c)); // skip NTD price / cost columns
+      let i=h.findIndex((c,i)=>okCol(c,i)&&c===na);
+      if(i<0&&na.length>1)i=h.findIndex((c,i)=>okCol(c,i)&&c.includes(na));
       if(i>=0){map[f.key]=i;used.add(i);break}}
   });
   return map;
@@ -410,6 +411,7 @@ function buildItems(rows,headerRow,map,limit){
     if(!raw.barcode&&!raw.nameZh&&!raw.nameEn)continue;
     if(raw.image&&!/^https?:\/\//i.test(raw.image))raw.image='';
     const st=parseStatus(raw.status);
+    if(raw.special!==null&&raw.special>0&&raw.price!==null&&raw.special>raw.price){raw.price=raw.special;raw.special=null} // final on-site price wins
     if(raw.special!==null&&raw.special>0&&raw.price&&raw.special<raw.price)st.tags.add('sale');else raw.special=null;
     if(raw.gwp)st.tags.add('gwp');
     const key=raw.barcode?raw.barcode+'|'+raw.counter:'row'+r;
